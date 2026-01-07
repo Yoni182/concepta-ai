@@ -8,6 +8,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const app = express();
+const PORT = process.env.PORT || 3002;
 
 app.use(cors({
   origin: '*',
