@@ -9,7 +9,8 @@ const debugLog = (hypothesisId: string, location: string, message: string, data:
 };
 // #endregion
 
-console.log('🔥 [1] Node.js process started');
+// BUILD VERSION: 2026-01-07-v2 - Force Railway cache refresh
+console.log('🔥 [1] Node.js process started - BUILD v2');
 // #region agent log
 debugLog('A', 'server.ts:1', 'Node.js process started', { pid: process.pid, nodeVersion: process.version });
 // #endregion
