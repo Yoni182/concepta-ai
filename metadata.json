@@ -1,0 +1,7 @@
+{
+  "name": "CONCEPTA",
+  "description": "A high-fidelity translation engine for architects to convert abstract 3D massing models into photorealistic, competition-grade visualizations with absolute geometric fidelity.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
