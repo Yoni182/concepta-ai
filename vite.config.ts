@@ -10,6 +10,9 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react()],
+      define: {
+        'import.meta.env.VITE_BACKEND_URL': JSON.stringify(env.VITE_BACKEND_URL || 'http://localhost:3002')
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
@@ -17,3 +20,4 @@ export default defineConfig(({ mode }) => {
       }
     };
 });
+
