@@ -1,4 +1,18 @@
+// #region agent log
+import * as fs from 'fs';
+const DEBUG_LOG_PATH = '/Users/yoni.chesla/concepta-ai/.cursor/debug.log';
+const debugLog = (hypothesisId: string, location: string, message: string, data: any) => {
+  try {
+    const entry = JSON.stringify({timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId,location,message,data}) + '\n';
+    fs.appendFileSync(DEBUG_LOG_PATH, entry);
+  } catch (e) { console.log('[DEBUG LOG ERROR]', e); }
+};
+// #endregion
+
 console.log('🔥 [1] Node.js process started');
+// #region agent log
+debugLog('A', 'server.ts:1', 'Node.js process started', { pid: process.pid, nodeVersion: process.version });
+// #endregion
 
 import dotenv from 'dotenv';
 import path from 'path';
@@ -7,11 +21,17 @@ import cors from 'cors';
 import { GoogleGenAI, Type } from '@google/genai';
 
 console.log('🔥 [2] All imports successful');
+// #region agent log
+debugLog('A', 'server.ts:imports', 'All imports successful', { express: typeof express, cors: typeof cors });
+// #endregion
 
 // Load .env.local explicitly (for local development)
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 console.log('🔥 [3] dotenv configured');
+// #region agent log
+debugLog('D', 'server.ts:dotenv', 'Dotenv configured', { PORT: process.env.PORT, GEMINI_API_KEY_SET: !!process.env.GEMINI_API_KEY, cwd: process.cwd() });
+// #endregion
 console.log('✅ App starting...');
 console.log('📍 GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✓ set' : '❌ NOT SET');
 
@@ -19,6 +39,9 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3002', 10);
 
 console.log(`📍 PORT: ${PORT}`);
+// #region agent log
+debugLog('C', 'server.ts:port', 'PORT value parsed', { PORT, rawPORT: process.env.PORT });
+// #endregion
 
 // CORS - Must use middleware BEFORE routes
 app.use(cors({
@@ -28,6 +51,13 @@ app.use(cors({
   maxAge: 3600
 }));
 
+// #region agent log
+app.use((req, res, next) => {
+  debugLog('B', 'server.ts:middleware', 'Request received', { method: req.method, path: req.path, headers: req.headers['content-type'] });
+  next();
+});
+// #endregion
+
 app.use(express.json({ limit: '50mb' }));
 
 const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -35,6 +65,9 @@ const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Health check
 app.get('/health', (req: Request, res: Response) => {
   console.log('📍 Health check requested');
+  // #region agent log
+  debugLog('B', 'server.ts:health', 'Health endpoint hit', { timestamp: Date.now() });
+  // #endregion
   res.json({ status: 'ok' });
 });
 
@@ -299,21 +332,39 @@ app.post('/api/generate-alternatives', async (req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// #region agent log
+debugLog('E', 'server.ts:listen-start', 'About to call app.listen', { PORT, interface: '0.0.0.0' });
+// #endregion
+
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend running on port ${PORT}`);
   console.log(`📍 Health check: http://0.0.0.0:${PORT}/health`);
-}).on('error', (err: any) => {
+  // #region agent log
+  debugLog('E', 'server.ts:listen-success', 'Server listening successfully', { PORT, address: server.address() });
+  // #endregion
+});
+
+server.on('error', (err: any) => {
   console.error('❌ Failed to start server:', err);
+  // #region agent log
+  debugLog('E', 'server.ts:listen-error', 'Server listen error', { error: err.message, code: err.code });
+  // #endregion
   process.exit(1);
 });
 
 // Catch unhandled errors
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught exception:', err);
+  // #region agent log
+  debugLog('A', 'server.ts:uncaught', 'Uncaught exception', { error: err.message, stack: err.stack });
+  // #endregion
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', (reason: any) => {
   console.error('❌ Unhandled rejection:', reason);
+  // #region agent log
+  debugLog('A', 'server.ts:rejection', 'Unhandled rejection', { reason: String(reason) });
+  // #endregion
   process.exit(1);
 });
