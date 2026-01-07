@@ -10,21 +10,13 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-// CORS - Set headers FIRST before anything else
-app.use((req: Request, res: Response, next: Function) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.setHeader('Access-Control-Max-Age', '3600');
-  
-  // Preflight request
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
-  next();
-});
+// CORS - Must use middleware BEFORE routes
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  maxAge: 3600
+}));
 
 app.use(express.json({ limit: '50mb' }));
 
@@ -33,14 +25,6 @@ const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Health check
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok' });
-});
-
-// Explicit OPTIONS handler for all routes
-app.options('*', (req: Request, res: Response) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.status(200).end();
 });
 
 // Analyze 3D Model
