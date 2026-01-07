@@ -11,7 +11,7 @@ console.log('✅ App starting...');
 console.log('📍 GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✓ set' : '❌ NOT SET');
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = parseInt(process.env.PORT || '3002', 10);
 
 console.log(`📍 PORT: ${PORT}`);
 
@@ -29,12 +29,14 @@ const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
+  console.log('📍 Health check requested');
   res.json({ status: 'ok' });
 });
 
 // Analyze 3D Model
 app.post('/api/analyze-model', async (req: Request, res: Response) => {
   try {
+    console.log('📍 /api/analyze-model request received');
     const { imageData } = req.body;
     if (!imageData) return res.status(400).json({ error: 'Missing imageData' });
 
@@ -52,7 +54,7 @@ app.post('/api/analyze-model', async (req: Request, res: Response) => {
     const description = response.text || "Standard architectural massing model.";
     res.json({ description });
   } catch (error: any) {
-    console.error('Analyze model error:', error);
+    console.error('❌ Analyze model error:', error);
     res.status(500).json({ error: error.message || 'Analysis failed' });
   }
 });
@@ -292,9 +294,9 @@ app.post('/api/generate-alternatives', async (req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend running on port ${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/health`);
+  console.log(`📍 Health check: http://0.0.0.0:${PORT}/health`);
 }).on('error', (err: any) => {
   console.error('❌ Failed to start server:', err);
   process.exit(1);
