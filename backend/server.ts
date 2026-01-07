@@ -333,12 +333,12 @@ app.post('/api/generate-alternatives', async (req: Request, res: Response) => {
 });
 
 // #region agent log
-debugLog('E', 'server.ts:listen-start', 'About to call app.listen', { PORT, interface: '0.0.0.0' });
+debugLog('E', 'server.ts:listen-start', 'About to call app.listen', { PORT, interface: 'default' });
 // #endregion
 
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Backend running on port ${PORT}`);
-  console.log(`📍 Health check: http://0.0.0.0:${PORT}/health`);
+  console.log(`📍 Health check: http://localhost:${PORT}/health`);
   // #region agent log
   debugLog('E', 'server.ts:listen-success', 'Server listening successfully', { PORT, address: server.address() });
   // #endregion
