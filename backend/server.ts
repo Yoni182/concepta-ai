@@ -10,12 +10,16 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 const app = express();
 const PORT = process.env.PORT || 3002;
 
+// CORS Configuration
 app.use(cors({
   origin: '*',
-  credentials: false,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
 }));
+
+// Explicitly handle preflight requests
+app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 
 const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
