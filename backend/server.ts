@@ -1,7 +1,11 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { GoogleGenAI, Type } from '@google/genai';
+
+// Load .env.local explicitly
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const app = express();
 const PORT = process.env.PORT || 3002;
