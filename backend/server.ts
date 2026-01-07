@@ -1,12 +1,17 @@
+console.log('🔥 [1] Node.js process started');
+
 import dotenv from 'dotenv';
 import path from 'path';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { GoogleGenAI, Type } from '@google/genai';
 
+console.log('🔥 [2] All imports successful');
+
 // Load .env.local explicitly (for local development)
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
+console.log('🔥 [3] dotenv configured');
 console.log('✅ App starting...');
 console.log('📍 GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✓ set' : '❌ NOT SET');
 
