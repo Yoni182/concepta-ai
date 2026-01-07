@@ -4,11 +4,16 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { GoogleGenAI, Type } from '@google/genai';
 
-// Load .env.local explicitly
+// Load .env.local explicitly (for local development)
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+
+console.log('✅ App starting...');
+console.log('📍 GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✓ set' : '❌ NOT SET');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+
+console.log(`📍 PORT: ${PORT}`);
 
 // CORS - Must use middleware BEFORE routes
 app.use(cors({
@@ -290,4 +295,18 @@ app.post('/api/generate-alternatives', async (req: Request, res: Response) => {
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
+}).on('error', (err: any) => {
+  console.error('❌ Failed to start server:', err);
+  process.exit(1);
+});
+
+// Catch unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ Unhandled rejection:', reason);
+  process.exit(1);
 });
