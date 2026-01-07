@@ -10,14 +10,18 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-// CORS - Allow all origins
-app.all('*', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+// Simple CORS middleware
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Handle preflight
   if (req.method === 'OPTIONS') {
-    return res.send(200);
+    res.status(200).end();
+    return;
   }
+  
   next();
 });
 
