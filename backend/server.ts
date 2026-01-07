@@ -8,9 +8,13 @@ import { GoogleGenAI, Type } from '@google/genai';
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const app = express();
-const PORT = process.env.PORT || 3002;
 
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  credentials: false,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(express.json({ limit: '50mb' }));
 
 const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
