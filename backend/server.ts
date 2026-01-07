@@ -10,18 +10,12 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-// Simple CORS middleware
+// Enable CORS with cors package
+app.use(cors());
+
+// Also set headers manually as backup
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
   next();
 });
 
