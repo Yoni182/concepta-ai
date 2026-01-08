@@ -14,7 +14,7 @@ const debugLog = (hypothesisId: string, location: string, message: string, data:
 };
 // #endregion
 
-// BUILD VERSION: 2026-01-07-v2 - Force Railway cache refresh
+// BUILD VERSION: 2026-01-08-v3 - Debug Railway shutdown
 console.log('🔥 [1] Node.js process started - BUILD v2');
 // #region agent log
 debugLog('A', 'server.ts:1', 'Node.js process started', { pid: process.pid, nodeVersion: process.version });
@@ -73,16 +73,18 @@ const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Root route (helps with Railway health checks)
 app.get('/', (req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'concepta-backend', timestamp: new Date().toISOString() });
+  console.log('📍 Root route hit');
+  res.status(200).json({ status: 'ok', service: 'concepta-backend', version: '2026-01-08-v3', timestamp: new Date().toISOString() });
 });
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
-  console.log('📍 Health check requested');
+  console.log('📍 Health check requested - responding with 200');
   // #region agent log
   debugLog('B', 'server.ts:health', 'Health endpoint hit', { timestamp: Date.now() });
   // #endregion
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({ status: 'ok', version: '2026-01-08-v3', timestamp: new Date().toISOString() });
+  console.log('📍 Health check response sent');
 });
 
 // Analyze 3D Model
