@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/generate-alternatives.ts": {
+      "maxDuration": 60
+    },
+    "api/analyze-building-ref.ts": {
+      "maxDuration": 30
+    },
+    "api/analyze-model.ts": {
+      "maxDuration": 30
+    }
+  }
+}

@@ -1,11 +1,8 @@
-
 import { AppState, DetectedMaterial, DesignAlternative, ArchitecturalIntelligence } from "../types";
 
 export class GeminiService {
-  private apiUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
-
   async analyzeModel(base64Image: string): Promise<string> {
-    const response = await fetch(`${this.apiUrl}/api/analyze-model`, {
+    const response = await fetch('/api/analyze-model', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imageData: base64Image.split(',')[1] })
@@ -21,7 +18,7 @@ export class GeminiService {
   }
 
   async analyzeBuildingRef(base64Image: string): Promise<{ description: string; materials: DetectedMaterial[]; intel: ArchitecturalIntelligence }> {
-    const response = await fetch(`${this.apiUrl}/api/analyze-building-ref`, {
+    const response = await fetch('/api/analyze-building-ref', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imageData: base64Image.split(',')[1] })
@@ -36,7 +33,7 @@ export class GeminiService {
   }
 
   async generateAlternatives(state: AppState): Promise<DesignAlternative[]> {
-    const response = await fetch(`${this.apiUrl}/api/generate-alternatives`, {
+    const response = await fetch('/api/generate-alternatives', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
