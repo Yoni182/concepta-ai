@@ -1,7 +1,12 @@
 // #region agent log
 import * as fs from 'fs';
-const DEBUG_LOG_PATH = '/Users/yoni.chesla/concepta-ai/.cursor/debug.log';
+const DEBUG_LOG_PATH = process.env.DEBUG_LOG_PATH || '/tmp/debug.log';
 const debugLog = (hypothesisId: string, location: string, message: string, data: any) => {
+  // Only log locally, skip in production to avoid fs issues
+  if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
+    console.log(`[DEBUG] ${location}: ${message}`, JSON.stringify(data));
+    return;
+  }
   try {
     const entry = JSON.stringify({timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId,location,message,data}) + '\n';
     fs.appendFileSync(DEBUG_LOG_PATH, entry);
