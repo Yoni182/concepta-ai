@@ -66,13 +66,18 @@ app.use(express.json({ limit: '50mb' }));
 
 const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+// Root route (helps with Railway health checks)
+app.get('/', (req: Request, res: Response) => {
+  res.json({ status: 'ok', service: 'concepta-backend', timestamp: new Date().toISOString() });
+});
+
 // Health check
 app.get('/health', (req: Request, res: Response) => {
   console.log('📍 Health check requested');
   // #region agent log
   debugLog('B', 'server.ts:health', 'Health endpoint hit', { timestamp: Date.now() });
   // #endregion
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Analyze 3D Model
@@ -340,9 +345,11 @@ app.post('/api/generate-alternatives', async (req: Request, res: Response) => {
 debugLog('E', 'server.ts:listen-start', 'About to call app.listen', { PORT, interface: 'default' });
 // #endregion
 
-const server = app.listen(PORT, () => {
+// Railway requires binding to 0.0.0.0
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend running on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/health`);
+  console.log(`📍 Bound to 0.0.0.0:${PORT}`);
   // #region agent log
   debugLog('E', 'server.ts:listen-success', 'Server listening successfully', { PORT, address: server.address() });
   // #endregion
