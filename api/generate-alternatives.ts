@@ -109,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const imageBase64 = modelImage.includes(',') ? modelImage.split(',')[1] : modelImage;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3-pro-image',
+          model: 'gemini-3-pro-image-preview',
           contents: {
             parts: [
               { text: prompt },
