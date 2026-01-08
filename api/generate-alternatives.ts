@@ -123,22 +123,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         let url = '';
         const parts = response.candidates?.[0]?.content?.parts || [];
-        
-        // Log what we received for debugging
-        console.log('Response parts count:', parts.length);
-        console.log('Response text:', response.text?.substring(0, 200));
+        console.log(`[${v.id}] Response received, parts: ${parts.length}`);
         
         for (const part of parts) {
           if ((part as any).inlineData) {
             url = `data:image/png;base64,${(part as any).inlineData.data}`;
+            console.log(`[${v.id}] Image generated successfully`);
             break;
           }
         }
 
         if (!url) {
-          // Log more details about the response
-          console.error('No image in response. Parts:', JSON.stringify(parts.map(p => Object.keys(p))));
-          throw new Error("Generation engine failed to return an image. Model may not support image generation.");
+          console.error(`[${v.id}] No image in response`);
+          throw new Error("Generation engine failed to return an image.");
         }
 
         return { ...v, description: v.logic, url };
