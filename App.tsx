@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppStage, AppState, LIGHTING_PRESETS } from './types';
 import { GeminiService } from './services/geminiService';
+import { useAuth } from './services/authContext';
 
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -11,8 +12,24 @@ import MaterialSelection from './components/MaterialSelection';
 import AtmosphereSettings from './components/AtmosphereSettings';
 import DecisionSummary from './components/DecisionSummary';
 import ResultView from './components/ResultView';
+import LoginPage from './components/LoginPage';
 
 const App: React.FC = () => {
+  const { user, loading } = useAuth();
+
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-pink-400/20 border-t-pink-400 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!user) {
+    return <LoginPage />;
+  }
   const [state, setState] = useState<AppState>({
     stage: AppStage.MODEL_INPUT,
     modelImage: null,
