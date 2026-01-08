@@ -45,11 +45,14 @@ debugLog('C', 'server.ts:port', 'PORT value parsed', { PORT, rawPORT: process.en
 // #endregion
 
 // CORS - Must use middleware BEFORE routes
+// Handle preflight OPTIONS requests explicitly
+app.options('*', cors());
 app.use(cors({
-  origin: '*',
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  maxAge: 3600
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: true,
+  maxAge: 86400
 }));
 
 // #region agent log
