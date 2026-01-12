@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppStage, AppState, LIGHTING_PRESETS } from './types';
+import { AppStage, AppState, AppModule, LIGHTING_PRESETS } from './types';
 import { GeminiService } from './services/geminiService';
 import { useAuth } from './services/authContext';
 
@@ -13,6 +13,7 @@ import AtmosphereSettings from './components/AtmosphereSettings';
 import DecisionSummary from './components/DecisionSummary';
 import ResultView from './components/ResultView';
 import LoginPage from './components/LoginPage';
+import ZoningAnalysis from './components/zoning/ZoningAnalysis';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
@@ -30,6 +31,8 @@ const App: React.FC = () => {
   if (!user) {
     return <LoginPage />;
   }
+
+  const [activeModule, setActiveModule] = useState<AppModule>('zoning');
   const [state, setState] = useState<AppState>({
     stage: AppStage.MODEL_INPUT,
     modelImage: null,
@@ -111,11 +114,58 @@ const App: React.FC = () => {
     setState(p => ({ ...p, stage: s }));
   };
 
+  // Zoning Analysis Module
+  if (activeModule === 'zoning') {
+    return (
+      <div className="flex h-screen bg-[#0a0a0a] text-white selection:bg-pink-500/20">
+        <aside className="w-80 border-r border-white/10 p-10 flex flex-col justify-between hidden md:flex shrink-0 bg-[#0a0a0a]">
+          <div>
+            <div className="mb-12">
+              <h1 className="text-2xl font-bold tracking-tighter mb-1 uppercase">CONCEPTA</h1>
+              <p className="text-[10px] mono text-white/40 uppercase tracking-[0.2em]">Zoning Analysis Engine</p>
+            </div>
+            <div className="space-y-4">
+              <div className="p-4 bg-pink-400/10 border border-pink-400/30 rounded-xl">
+                <p className="text-[10px] mono uppercase tracking-widest text-pink-400 mb-2">Stage 1</p>
+                <p className="text-sm text-white/80">Planning Rights Analysis</p>
+                <p className="text-[10px] text-white/40 mt-1">Zoning & Regulations</p>
+              </div>
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl opacity-40">
+                <p className="text-[10px] mono uppercase tracking-widest text-white/40 mb-2">Stage 2</p>
+                <p className="text-sm text-white/60">Massing Design</p>
+                <p className="text-[10px] text-white/30 mt-1">Coming Soon</p>
+              </div>
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl opacity-40">
+                <p className="text-[10px] mono uppercase tracking-widest text-white/40 mb-2">Stage 3</p>
+                <p className="text-sm text-white/60">3D Visualization</p>
+                <p className="text-[10px] text-white/30 mt-1">Available Now</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+            <p className="text-[10px] mono text-white/40 uppercase tracking-widest">Core Engine</p>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]"></div>
+              <span className="text-[10px] font-medium mono uppercase opacity-60 tracking-tighter">TABA Parser Ready</span>
+            </div>
+          </div>
+        </aside>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header activeModule={activeModule} onModuleChange={setActiveModule} />
+          <main className="flex-1 overflow-y-auto p-8">
+            <ZoningAnalysis />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Visualization Module (existing Stage 3)
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-white selection:bg-pink-500/20">
       <Sidebar activeStage={state.stage} onJump={jumpToStage} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header activeModule={activeModule} onModuleChange={setActiveModule} />
         <main className="flex-1 overflow-y-auto p-8 relative">
           {state.error && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-900/50 border border-red-500 text-red-200 px-6 py-3 rounded-lg z-50 flex items-center gap-3">

@@ -8,6 +8,12 @@
     },
     "api/analyze-model.ts": {
       "maxDuration": 30
+    },
+    "api/zoning/analyze.ts": {
+      "maxDuration": 60
+    },
+    "api/zoning/generate-tamhil.ts": {
+      "maxDuration": 60
     }
   }
 }

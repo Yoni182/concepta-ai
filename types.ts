@@ -86,3 +86,160 @@ export const CONTEXT_PRESETS = [
   { id: 'residential-hood', name: 'Residential Neighborhood', desc: 'Low-rise context with domestic scales.' },
   { id: 'minimal-neutral', name: 'Minimal Context', desc: 'Abstract environment focusing on mass.' }
 ];
+
+// ============================================
+// STAGE 1: ZONING ANALYSIS TYPES
+// ============================================
+
+export type AppModule = 'zoning' | 'visualization';
+
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
+
+export interface ParcelInfo {
+  gush: string;
+  helka: string;
+  area_net_sqm: number;
+  address?: string;
+  city?: string;
+}
+
+export interface ZoningInfo {
+  primary_use: string;
+  allowed_secondary_uses: string[];
+  plan_number?: string;
+  plan_name?: string;
+}
+
+export interface BuildingRights {
+  max_units: number;
+  main_area_sqm: number;
+  service_area_sqm: number;
+  balcony_area_sqm?: number;
+  floors_max: number;
+  floors_below_ground?: number;
+  height_max_m: number;
+  coverage_percent?: number;
+}
+
+export interface BuildingConstraints {
+  building_lines: {
+    front_m: number;
+    side_m: number;
+    rear_m: number;
+  };
+  parking_ratio: string;
+  parking_spaces?: number;
+  commercial_frontage?: boolean;
+}
+
+export interface RiskNote {
+  type: 'ambiguity' | 'conflict' | 'missing' | 'interpretation';
+  description: string;
+  clause_reference?: string;
+}
+
+export interface PlanningRightsObject {
+  parcel: ParcelInfo;
+  zoning: ZoningInfo;
+  rights: BuildingRights;
+  constraints: BuildingConstraints;
+  confidence_level: ConfidenceLevel;
+  risk_notes: RiskNote[];
+  extracted_at: string;
+}
+
+export interface ZoningDocument {
+  id: string;
+  name: string;
+  file: File;
+  base64: string;
+  type: 'regulations' | 'rights_table' | 'appendix' | 'unknown';
+}
+
+// ============================================
+// STAGE 2: TAMHIL (UNIT MIX) TYPES
+// ============================================
+
+export interface UnitType {
+  id: string;
+  name: string;           // e.g., "2-Room", "3-Room", "4-Room", "Penthouse"
+  rooms: number;          // Number of rooms
+  area_sqm: number;       // Unit size in sqm
+  has_balcony: boolean;
+  balcony_sqm?: number;
+}
+
+export interface FloorUnit {
+  unit_type_id?: string;
+  unit_type_name?: string;
+  unit_type?: string;     // New: n3, n4, n5, mini_ph, ph
+  label?: string;         // New: Display label
+  rooms: number;
+  area_sqm: number;
+  count: number;          // How many of this type on this floor
+  color?: string;         // New: Color for visualization
+}
+
+export interface FloorPlan {
+  floor_number: number;
+  floor_type: 'typical' | 'ground' | 'penthouse' | 'technical' | 'roof';
+  floor_label?: string;   // New: Hebrew floor label
+  units: FloorUnit[];
+  total_units: number;
+  total_area_sqm: number;
+}
+
+export interface UnitMixSummary {
+  unit_type_name?: string;
+  unit_type?: string;     // New: n3, n4, n5, mini_ph, ph
+  label?: string;         // New: Display label with rooms
+  rooms: number;
+  area_sqm?: number;
+  avg_area_sqm?: number;  // New: Average size
+  total_count: number;
+  total_area_sqm: number;
+  percentage: number;     // % of total units
+}
+
+export interface GroundFloorAmenity {
+  type: 'commercial' | 'lobby' | 'pool' | 'club';
+  label: string;        // Hebrew label
+  area_sqm: number;
+  color: string;
+}
+
+export interface TamhilOutput {
+  project_info: {
+    gush: string;
+    helka: string;
+    plan_number?: string;
+  };
+  building_summary: {
+    num_buildings?: number;   // Number of towers
+    total_floors: number;
+    floors_below_ground: number;
+    floors_above_ground: number;
+    total_units: number;
+    total_main_area_sqm: number;
+    total_service_area_sqm: number;
+    total_balcony_area_sqm: number;
+    average_unit_size_sqm?: number;
+  };
+  ground_floor_amenities?: GroundFloorAmenity[];  // Pool, club, lobby, commercial
+  floor_plans: FloorPlan[];
+  unit_mix_summary: UnitMixSummary[];
+  color_legend?: Record<string, string>;
+  design_notes: string[];
+  generated_at: string;
+}
+
+export interface ZoningAnalysisState {
+  stage: 'input' | 'processing' | 'rights_result' | 'generating_tamhil' | 'tamhil_result';
+  gush: string;
+  helka: string;
+  documents: ZoningDocument[];
+  result: PlanningRightsObject | null;
+  report: string | null;
+  tamhil: TamhilOutput | null;
+  error: string | null;
+}
