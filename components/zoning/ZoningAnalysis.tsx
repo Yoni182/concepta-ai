@@ -218,11 +218,11 @@ const ZoningAnalysis: React.FC = () => {
 
   // Input view
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h1 className="text-4xl font-light uppercase tracking-tighter">Planning Rights Analysis</h1>
-        <p className="text-white/40 text-sm">Upload zoning documents and enter parcel details to extract structured rights</p>
+        <h1 className="text-2xl md:text-4xl font-light uppercase tracking-tighter">Planning Rights Analysis</h1>
+        <p className="text-white/40 text-xs md:text-sm">Upload zoning documents and enter parcel details to extract structured rights</p>
       </div>
 
       {/* Progress indicator */}
@@ -248,7 +248,7 @@ const ZoningAnalysis: React.FC = () => {
       )}
 
       {/* Parcel info inputs */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="space-y-2">
           <label className="text-[10px] mono uppercase tracking-widest text-white/40">Gush (Block)</label>
           <input
@@ -361,38 +361,38 @@ const RightsResultView: React.FC<{
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0">
       {/* Progress indicator */}
-      <div className="flex items-center justify-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">✓</div>
-          <span className="text-xs text-green-400">Extract Rights</span>
+      <div className="flex items-center justify-center gap-2 md:gap-4">
+        <div className="flex items-center gap-1 md:gap-2">
+          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] md:text-xs font-bold">✓</div>
+          <span className="text-[10px] md:text-xs text-green-400 hidden sm:inline">Extract Rights</span>
         </div>
-        <div className="w-12 h-[2px] bg-green-500"></div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-bold">2</div>
-          <span className="text-xs text-white/60">Generate Tamhil</span>
+        <div className="w-8 md:w-12 h-[2px] bg-green-500"></div>
+        <div className="flex items-center gap-1 md:gap-2">
+          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-[10px] md:text-xs font-bold">2</div>
+          <span className="text-[10px] md:text-xs text-white/60 hidden sm:inline">Generate Tamhil</span>
         </div>
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-light uppercase tracking-tighter">Stage 1: Rights Extracted</h1>
-          <p className="text-white/40 text-sm mt-1">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="text-center md:text-left">
+          <h1 className="text-xl md:text-3xl font-light uppercase tracking-tighter">Stage 1: Rights Extracted</h1>
+          <p className="text-white/40 text-xs md:text-sm mt-1">
             Gush {result.parcel.gush} | Helka {result.parcel.helka}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-center gap-2 md:gap-4">
           <button
             onClick={() => setShowJson(!showJson)}
-            className="px-4 py-2 text-xs mono uppercase border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
+            className="px-3 md:px-4 py-2 text-[10px] md:text-xs mono uppercase border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
           >
-            {showJson ? 'Show Cards' : 'Show JSON'}
+            {showJson ? 'Cards' : 'JSON'}
           </button>
           <button
             onClick={onReset}
-            className="px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-sm"
+            className="px-4 md:px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-xs md:text-sm"
           >
             Start Over
           </button>
@@ -531,67 +531,69 @@ const TamhilView: React.FC<{
   const [viewMode, setViewMode] = useState<'building' | 'summary' | 'floors' | 'json'>('building');
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0">
       {/* Progress indicator */}
-      <div className="flex items-center justify-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">✓</div>
-          <span className="text-xs text-green-400">Extract Rights</span>
+      <div className="flex items-center justify-center gap-2 md:gap-4">
+        <div className="flex items-center gap-1 md:gap-2">
+          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] md:text-xs font-bold">✓</div>
+          <span className="text-[10px] md:text-xs text-green-400 hidden sm:inline">Extract Rights</span>
         </div>
-        <div className="w-12 h-[2px] bg-green-500"></div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">✓</div>
-          <span className="text-xs text-green-400">Generate Tamhil</span>
+        <div className="w-8 md:w-12 h-[2px] bg-green-500"></div>
+        <div className="flex items-center gap-1 md:gap-2">
+          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] md:text-xs font-bold">✓</div>
+          <span className="text-[10px] md:text-xs text-green-400 hidden sm:inline">Generate Tamhil</span>
         </div>
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-light uppercase tracking-tighter">Tamhil Generated</h1>
-          <p className="text-white/40 text-sm mt-1">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="text-center md:text-left">
+          <h1 className="text-xl md:text-3xl font-light uppercase tracking-tighter">Tamhil Generated</h1>
+          <p className="text-white/40 text-xs md:text-sm mt-1">
             Gush {tamhil.project_info.gush} | Helka {tamhil.project_info.helka}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
+        <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-4">
+          <div className="flex flex-wrap justify-center bg-white/5 border border-white/10 rounded-lg p-1">
             <button
               onClick={() => setViewMode('building')}
-              className={`px-3 py-1 text-xs mono uppercase rounded transition-colors ${viewMode === 'building' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'building' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
             >
               🏢 Building
             </button>
             <button
               onClick={() => setViewMode('summary')}
-              className={`px-3 py-1 text-xs mono uppercase rounded transition-colors ${viewMode === 'summary' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'summary' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
             >
               Summary
             </button>
             <button
               onClick={() => setViewMode('floors')}
-              className={`px-3 py-1 text-xs mono uppercase rounded transition-colors ${viewMode === 'floors' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'floors' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
             >
               Floors
             </button>
             <button
               onClick={() => setViewMode('json')}
-              className={`px-3 py-1 text-xs mono uppercase rounded transition-colors ${viewMode === 'json' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'json' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
             >
               JSON
             </button>
           </div>
-          <button
-            onClick={onBack}
-            className="px-4 py-2 text-xs mono uppercase border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            Back to Rights
-          </button>
-          <button
-            onClick={onReset}
-            className="px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-sm"
-          >
-            Start Over
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onBack}
+              className="px-3 md:px-4 py-2 text-[10px] md:text-xs mono uppercase border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              Back
+            </button>
+            <button
+              onClick={onReset}
+              className="px-4 md:px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-xs md:text-sm"
+            >
+              Start Over
+            </button>
+          </div>
         </div>
       </div>
 
@@ -619,32 +621,36 @@ const TamhilView: React.FC<{
       {viewMode === 'building' && (
         <div className="space-y-6">
           {/* Visual Building Representation */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 overflow-x-auto">
-            <div className="flex justify-between items-start mb-6">
-              <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400">Building Visualization</h3>
-              {/* Legend - matching PDF colors exactly */}
-              <div className="flex flex-wrap gap-3">
-                {[
-                  { label: '81 sqm', color: '#E8F5E9' },
-                  { label: '109-115 sqm', color: '#FFD54F' },
-                  { label: '135-145 sqm', color: '#C8E6C9' },
-                  { label: '154 sqm', color: '#A5D6A7' },
-                  { label: '180 sqm (PH)', color: '#81C784' },
-                  { label: 'מסחר', color: '#9E9E9E' },
-                  { label: 'לובי כניסה', color: '#BDBDBD' },
-                  { label: 'בריכה', color: '#90CAF9' },
-                  { label: 'מועדון', color: '#FFF176' },
-                ].map(({ label, color }, i) => (
-                  <div key={i} className="flex items-center gap-1">
-                    <div className="w-3 h-3 border border-gray-500" style={{ backgroundColor: color }}></div>
-                    <span className="text-[10px] text-white/50">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 md:p-6 overflow-x-auto">
+            {/* Mobile scroll hint */}
+            <div className="md:hidden text-center text-[10px] text-white/40 mb-2">← Scroll horizontally to view full building →</div>
             
-            {/* Full Tamhil Layout with Summary Tables */}
-            <div className="flex gap-6">
+            <div className="min-w-[1000px]">
+              <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
+                <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400">Building Visualization</h3>
+                {/* Legend - matching PDF colors exactly */}
+                <div className="flex flex-wrap gap-2 md:gap-3">
+                  {[
+                    { label: '81 sqm', color: '#E8F5E9' },
+                    { label: '109-115 sqm', color: '#FFD54F' },
+                    { label: '135-145 sqm', color: '#C8E6C9' },
+                    { label: '154 sqm', color: '#A5D6A7' },
+                    { label: '180 sqm (PH)', color: '#81C784' },
+                    { label: 'מסחר', color: '#9E9E9E' },
+                    { label: 'לובי כניסה', color: '#BDBDBD' },
+                    { label: 'בריכה', color: '#90CAF9' },
+                    { label: 'מועדון', color: '#FFF176' },
+                  ].map(({ label, color }, i) => (
+                    <div key={i} className="flex items-center gap-1">
+                      <div className="w-3 h-3 border border-gray-500" style={{ backgroundColor: color }}></div>
+                      <span className="text-[10px] text-white/50">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Full Tamhil Layout with Summary Tables */}
+              <div className="flex gap-6">
               {/* LEFT SIDE - Summary Tables (like PDF) */}
               <div className="flex flex-col gap-4 text-[10px]">
                 {/* סיכום תמהיל - HARDCODED for demo */}
@@ -819,6 +825,7 @@ const TamhilView: React.FC<{
               })()}
               </div>{/* End RIGHT SIDE - Building Towers */}
             </div>{/* End Full Tamhil Layout */}
+            </div>{/* End min-w-[1000px] wrapper */}
           </div>
 
           {/* Unit Distribution - CALCULATED FROM floor_plans for 100% accuracy */}
