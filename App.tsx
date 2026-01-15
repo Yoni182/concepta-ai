@@ -1,19 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
-import { AppStage, AppState, AppModule, LIGHTING_PRESETS } from './types';
-import { GeminiService } from './services/geminiService';
+import React, { useState, useRef } from 'react';
 import { useAuth } from './services/authContext';
+import { Project } from './services/projectsService';
 
-import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import ModelInput from './components/ModelInput';
-import BuildingRefInput from './components/BuildingRefInput';
-import MaterialSelection from './components/MaterialSelection';
-import AtmosphereSettings from './components/AtmosphereSettings';
-import DecisionSummary from './components/DecisionSummary';
-import ResultView from './components/ResultView';
 import LoginPage from './components/LoginPage';
-import ZoningAnalysis from './components/zoning/ZoningAnalysis';
+import Library from './components/Library';
+import ZoningAnalysis, { ZoningAnalysisRef } from './components/zoning/ZoningAnalysis';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
@@ -22,7 +14,7 @@ const App: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-pink-400/20 border-t-pink-400 rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-amber-400/20 border-t-amber-400 rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -32,213 +24,116 @@ const App: React.FC = () => {
     return <LoginPage />;
   }
 
-  const [activeModule, setActiveModule] = useState<AppModule>('zoning');
-  const [state, setState] = useState<AppState>({
-    stage: AppStage.MODEL_INPUT,
-    modelImage: null,
-    buildingRefImage: null,
-    detectedMaterials: [],
-    selectedMaterialIds: [],
-    manualMaterialImages: [],
-    groundFloorType: 'Lobby',
-    groundFloorDescription: '',
-    lightingConfig: { 
-      ...LIGHTING_PRESETS[0], 
-      preset: LIGHTING_PRESETS[0].name, 
-      sunAzimuth: LIGHTING_PRESETS[0].azimuth, 
-      sunIntensity: LIGHTING_PRESETS[0].intensity, 
-      timeOfDay: LIGHTING_PRESETS[0].time, 
-      haze: LIGHTING_PRESETS[0].haze 
-    },
-    contextSetting: 'Dense Urban',
-    finalAlternatives: [],
-  });
+  // Current step in the workflow (will be managed by ZoningAnalysis component)
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const zoningRef = useRef<ZoningAnalysisRef>(null);
 
-  const [hasApiKey, setHasApiKey] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  // Handle loading a project from the library
+  const handleLoadProject = (project: Project) => {
+    if (zoningRef.current) {
+      zoningRef.current.loadProject(project);
+    }
+    setCurrentStep(project.currentStep);
+  };
 
-  useEffect(() => {
-    const checkKey = async () => {
-      // @ts-ignore
-      if (window.aistudio) {
-        // @ts-ignore
-        const has = await window.aistudio.hasSelectedApiKey();
-        setHasApiKey(has);
-      }
-    };
-    checkKey();
-  }, []);
+  // Step definitions for the sidebar
+  const steps = [
+    { id: 1, name: 'Planning Rights', description: 'Extract from TABA', completed: currentStep > 1 },
+    { id: 2, name: 'Unit Mix (Tamhil)', description: 'Generate proposal', completed: currentStep > 2 },
+    { id: 3, name: 'Massing Design', description: 'Building form', completed: currentStep > 3 },
+    { id: 4, name: '3D Visualization', description: 'Render & preview', completed: currentStep > 4 },
+    { id: 5, name: 'Export & Report', description: 'Final deliverables', completed: currentStep > 5 },
+  ];
 
-  const gemini = new GeminiService();
-
-  const handleNext = async () => {
-    setIsAnalyzing(true);
-    try {
-      if (state.stage === AppStage.MODEL_INPUT && state.modelImage) {
-        const desc = await gemini.analyzeModel(state.modelImage);
-        setState(p => ({ ...p, stage: AppStage.BUILDING_REF, analysisResults: { ...p.analysisResults!, modelDescription: desc, buildingRefDescription: '', archIntelligence: { massingHierarchy: '', facadeZoning: '', geometricLanguage: '', elementLogic: '', materialSystem: '', indoorOutdoor: '', greenIntegration: '', humanScale: '' } } }));
-      } else if (state.stage === AppStage.BUILDING_REF && state.buildingRefImage) {
-        const { description, materials, intel } = await gemini.analyzeBuildingRef(state.buildingRefImage);
-        setState(p => ({ 
-          ...p, 
-          stage: AppStage.MATERIAL_STRATEGY, 
-          detectedMaterials: materials,
-          selectedMaterialIds: materials.map(m => m.id),
-          analysisResults: { ...p.analysisResults!, buildingRefDescription: description, archIntelligence: intel } 
-        }));
-      } else if (state.stage === AppStage.MATERIAL_STRATEGY) {
-        setState(p => ({ ...p, stage: AppStage.ATMOSPHERE }));
-      } else if (state.stage === AppStage.ATMOSPHERE) {
-        setState(p => ({ ...p, stage: AppStage.SUMMARY }));
-      } else if (state.stage === AppStage.SUMMARY) {
-        // @ts-ignore
-        if (!hasApiKey && window.aistudio) await window.aistudio.openSelectKey();
-        setState(p => ({ ...p, stage: AppStage.GENERATING }));
-        const alts = await gemini.generateAlternatives(state);
-        setState(p => ({ ...p, stage: AppStage.RESULT, finalAlternatives: alts }));
-      }
-    } catch (err: any) {
-      setState(p => ({ ...p, error: err.message, stage: AppStage.SUMMARY }));
-    } finally {
-      setIsAnalyzing(false);
+  const handleStepClick = (stepId: number) => {
+    // Only allow clicking on completed steps or the current step
+    if (stepId <= currentStep) {
+      setCurrentStep(stepId);
     }
   };
 
-  const handleBack = () => {
-    const stages = Object.values(AppStage);
-    const currentIndex = stages.indexOf(state.stage);
-    if (currentIndex > 0) setState(prev => ({ ...prev, stage: stages[currentIndex - 1] as AppStage }));
-  };
-
-  const jumpToStage = (s: AppStage) => {
-    setState(p => ({ ...p, stage: s }));
-  };
-
-  // Zoning Analysis Module
-  if (activeModule === 'zoning') {
-    return (
-      <div className="flex h-screen bg-[#0a0a0a] text-white selection:bg-pink-500/20">
-        <aside className="w-80 border-r border-white/10 p-10 flex flex-col justify-between hidden md:flex shrink-0 bg-[#0a0a0a]">
-          <div>
-            <div className="mb-12">
-              <h1 className="text-2xl font-bold tracking-tighter mb-1 uppercase">CONCEPTA</h1>
-              <p className="text-[10px] mono text-white/40 uppercase tracking-[0.2em]">Zoning Analysis Engine</p>
-            </div>
-            <div className="space-y-4">
-              <div className="p-4 bg-pink-400/10 border border-pink-400/30 rounded-xl">
-                <p className="text-[10px] mono uppercase tracking-widest text-pink-400 mb-2">Stage 1</p>
-                <p className="text-sm text-white/80">Planning Rights Analysis</p>
-                <p className="text-[10px] text-white/40 mt-1">Zoning & Regulations</p>
-              </div>
-              <div className="p-4 bg-white/5 border border-white/10 rounded-xl opacity-40">
-                <p className="text-[10px] mono uppercase tracking-widest text-white/40 mb-2">Stage 2</p>
-                <p className="text-sm text-white/60">Massing Design</p>
-                <p className="text-[10px] text-white/30 mt-1">Coming Soon</p>
-              </div>
-              <div className="p-4 bg-white/5 border border-white/10 rounded-xl opacity-40">
-                <p className="text-[10px] mono uppercase tracking-widest text-white/40 mb-2">Stage 3</p>
-                <p className="text-sm text-white/60">3D Visualization</p>
-                <p className="text-[10px] text-white/30 mt-1">Available Now</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-6 bg-white/5 rounded-2xl border border-white/10 space-y-3">
-            <p className="text-[10px] mono text-white/40 uppercase tracking-widest">Core Engine</p>
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]"></div>
-              <span className="text-[10px] font-medium mono uppercase opacity-60 tracking-tighter">TABA Parser Ready</span>
-            </div>
-          </div>
-        </aside>
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header activeModule={activeModule} onModuleChange={setActiveModule} />
-          <main className="flex-1 overflow-y-auto p-8">
-            <ZoningAnalysis />
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  // Visualization Module (existing Stage 3)
   return (
-    <div className="flex h-screen bg-[#0a0a0a] text-white selection:bg-pink-500/20">
-      <Sidebar activeStage={state.stage} onJump={jumpToStage} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header activeModule={activeModule} onModuleChange={setActiveModule} />
-        <main className="flex-1 overflow-y-auto p-8 relative">
-          {state.error && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-900/50 border border-red-500 text-red-200 px-6 py-3 rounded-lg z-50 flex items-center gap-3">
-              <span className="text-xl">⚠️</span>
-              <p>{state.error}</p>
-              <button onClick={() => setState(p => ({...p, error: undefined}))} className="ml-4 hover:text-white">✕</button>
+    <div className="flex h-screen bg-[#0a0a0a] text-white selection:bg-amber-500/20">
+      {/* Sidebar with 5 steps */}
+      <aside className="w-72 border-r border-white/10 p-8 flex flex-col justify-between hidden md:flex shrink-0 bg-[#0a0a0a]">
+        <div>
+          {/* Logo */}
+          <div className="mb-10 text-center">
+            <h1 className="text-2xl font-bold tracking-tighter mb-1 uppercase">CONCEPTA</h1>
+            <p className="text-[10px] mono text-white/40 uppercase tracking-[0.2em]">AI Architecture Engine</p>
             </div>
-          )}
 
-          {state.stage === AppStage.MODEL_INPUT && <ModelInput image={state.modelImage} setImage={img => setState(p => ({...p, modelImage: img}))} />}
-          {state.stage === AppStage.BUILDING_REF && <BuildingRefInput image={state.buildingRefImage} setImage={img => setState(p => ({...p, buildingRefImage: img}))} />}
-          {state.stage === AppStage.MATERIAL_STRATEGY && (
-            <MaterialSelection 
-              detected={state.detectedMaterials}
-              selectedIds={state.selectedMaterialIds}
-              setSelectedIds={ids => setState(p => ({...p, selectedMaterialIds: ids}))}
-              manualImages={state.manualMaterialImages}
-              setManualImages={imgs => setState(p => ({...p, manualMaterialImages: imgs}))}
-            />
-          )}
-          {state.stage === AppStage.ATMOSPHERE && (
-            <AtmosphereSettings 
-              groundFloorType={state.groundFloorType}
-              setGroundFloorType={t => setState(p => ({...p, groundFloorType: t}))}
-              groundFloorDesc={state.groundFloorDescription}
-              setGroundFloorDesc={d => setState(p => ({...p, groundFloorDescription: d}))}
-              lightingConfig={state.lightingConfig}
-              setLightingConfig={lc => setState(p => ({...p, lightingConfig: lc}))}
-              context={state.contextSetting}
-              setContext={c => setState(p => ({...p, contextSetting: c}))}
-            />
-          )}
-          {state.stage === AppStage.SUMMARY && <DecisionSummary state={state} />}
-          {state.stage === AppStage.GENERATING && (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-12">
-              <div className="relative">
-                <div className="w-24 h-24 border-2 border-pink-400/5 rounded-full animate-ping absolute inset-0"></div>
-                <div className="w-24 h-24 border-4 border-pink-400/10 border-t-pink-400 rounded-full animate-spin"></div>
+          {/* 5 Steps */}
+          <div className="space-y-2">
+            {steps.map((step, index) => {
+              const isActive = currentStep === step.id;
+              const isCompleted = step.completed;
+              const isClickable = step.id <= currentStep;
+
+              return (
+                <button
+                  key={step.id}
+                  onClick={() => handleStepClick(step.id)}
+                  disabled={!isClickable}
+                  className={`w-full text-left p-4 rounded-xl transition-all ${
+                    isActive
+                      ? 'bg-amber-500/20 border border-amber-500/40'
+                      : isCompleted
+                      ? 'bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 cursor-pointer'
+                      : 'bg-white/5 border border-white/10 opacity-40 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                      isCompleted || isActive
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-white/10 text-white/40'
+                    }`}>
+                      {isCompleted ? '✓' : step.id}
               </div>
-              <div className="space-y-4">
-                <h2 className="text-4xl font-light uppercase tracking-tighter">Computing Architectural Alternatives</h2>
-                <div className="flex justify-center gap-8 text-[10px] mono uppercase text-pink-400/40 tracking-widest">
-                  <span className="animate-pulse">1. Fibonacci Scaling...</span>
-                  <span className="animate-pulse" style={{animationDelay: '0.5s'}}>2. Color Harmony Check...</span>
-                  <span className="animate-pulse" style={{animationDelay: '1s'}}>3. Parallel Rendering...</span>
+                    <div>
+                      <p className={`text-sm font-medium ${isActive || isCompleted ? 'text-white' : 'text-white/60'}`}>
+                        {step.name}
+                      </p>
+                      <p className="text-[10px] text-white/40">{step.description}</p>
                 </div>
               </div>
-              <p className="text-white/40 max-w-md leading-relaxed text-sm">
-                Generating 3 distinct interpretations based on material logic and proportional constraints. This parallel process ensures objective design exploration.
-              </p>
+                </button>
+              );
+            })}
+          </div>
             </div>
-          )}
-          {state.stage === AppStage.RESULT && (
-            <ResultView 
-              alternatives={state.finalAlternatives} 
-              onBackToSummary={() => setState(p => ({ ...p, stage: AppStage.SUMMARY }))}
-              onReset={() => window.location.reload()} 
-            />
-          )}
-        </main>
 
-        {![AppStage.GENERATING, AppStage.RESULT].includes(state.stage) && (
-          <footer className="h-20 border-t border-white/10 bg-[#0a0a0a] flex items-center justify-between px-8 shrink-0">
-            <button onClick={handleBack} disabled={state.stage === AppStage.MODEL_INPUT || isAnalyzing} className="px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 disabled:opacity-20 transition-all text-xs font-bold mono uppercase">Back</button>
-            <div className="flex items-center gap-4">
-              {isAnalyzing && <span className="text-[10px] mono animate-pulse text-pink-400/50">ARCHITECTURAL KERNEL ACTIVE...</span>}
-              <button onClick={handleNext} disabled={isAnalyzing || (state.stage === AppStage.MODEL_INPUT && !state.modelImage) || (state.stage === AppStage.BUILDING_REF && !state.buildingRefImage)} className="px-8 py-2 rounded-full bg-white text-black font-bold hover:bg-white/90 disabled:opacity-50 transition-all text-xs uppercase tracking-wider">
-                {state.stage === AppStage.SUMMARY ? 'Execute Translation' : 'Continue'}
-              </button>
-            </div>
-          </footer>
+        {/* Back Button - only show on step 2+ */}
+        {currentStep > 1 && (
+          <button
+            onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
+            className="w-full py-3 rounded-xl border border-white/20 text-white/60 hover:bg-white/5 hover:text-white transition-all text-sm font-medium flex items-center justify-center gap-2"
+          >
+            <span>←</span> Back
+          </button>
         )}
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header onOpenLibrary={() => setIsLibraryOpen(true)} />
+        <main className="flex-1 overflow-y-auto py-8 px-4 md:px-8">
+          <ZoningAnalysis 
+            ref={zoningRef}
+            onStepChange={setCurrentStep} 
+            currentStep={currentStep} 
+          />
+        </main>
       </div>
+
+      {/* Library Modal */}
+      <Library
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onLoadProject={handleLoadProject}
+      />
     </div>
   );
 };

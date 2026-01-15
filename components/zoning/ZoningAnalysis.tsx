@@ -1,7 +1,20 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { ZoningAnalysisState, ZoningDocument, PlanningRightsObject, TamhilOutput } from '../../types';
+import { useAuth } from '../../services/authContext';
+import { Project, createProject, updateProject } from '../../services/projectsService';
 
-const ZoningAnalysis: React.FC = () => {
+interface ZoningAnalysisProps {
+  onStepChange?: (step: number) => void;
+  currentStep?: number;
+}
+
+// Exposed methods for parent component
+export interface ZoningAnalysisRef {
+  loadProject: (project: Project) => void;
+}
+
+const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onStepChange, currentStep = 1 }, ref) => {
+  const { user } = useAuth();
   const [state, setState] = useState<ZoningAnalysisState>({
     stage: 'input',
     gush: '',
@@ -14,6 +27,91 @@ const ZoningAnalysis: React.FC = () => {
   });
 
   const [isDragging, setIsDragging] = useState(false);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    loadProject: (project: Project) => {
+      setCurrentProjectId(project.id || null);
+      setState({
+        stage: project.tamhilData ? 'tamhil_result' : project.tabaData ? 'rights_result' : 'input',
+        gush: project.gush,
+        helka: project.helka,
+        documents: [],
+        result: project.tabaData || null,
+        report: project.tabaReport || null,
+        tamhil: project.tamhilData || null,
+        error: null,
+      });
+    },
+  }));
+
+  // Save project to database
+  const saveProject = async () => {
+    if (!user) return;
+
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const projectData = {
+        userId: user.uid,
+        name: `Gush ${state.gush} - Helka ${state.helka}`,
+        gush: state.gush,
+        helka: state.helka,
+        currentStep: state.stage === 'tamhil_result' ? 2 : 1,
+        tabaData: state.result,
+        tabaReport: state.report,
+        tamhilData: state.tamhil,
+      };
+
+      if (currentProjectId) {
+        await updateProject(currentProjectId, projectData);
+        setSaveMessage('Project updated!');
+      } else {
+        const newId = await createProject(projectData);
+        setCurrentProjectId(newId);
+        setSaveMessage('Project saved!');
+      }
+
+      // Clear message after 2 seconds
+      setTimeout(() => setSaveMessage(null), 2000);
+    } catch (err: any) {
+      console.error('Failed to save project:', err);
+      setSaveMessage('Failed to save');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Notify parent of step changes
+  useEffect(() => {
+    if (onStepChange) {
+      if (state.stage === 'input' || state.stage === 'processing') {
+        onStepChange(1);
+      } else if (state.stage === 'rights_result' || state.stage === 'generating_tamhil') {
+        onStepChange(1); // Still on step 1 until tamhil is generated
+      } else if (state.stage === 'tamhil_result') {
+        onStepChange(2);
+      }
+    }
+  }, [state.stage, onStepChange]);
+
+  // Respond to step changes from parent (e.g., back button, sidebar click)
+  useEffect(() => {
+    // Map currentStep to internal stage
+    if (currentStep === 1 && state.stage === 'tamhil_result') {
+      // Going back to step 1 from step 2 - show rights_result if we have data
+      if (state.result) {
+        setState(prev => ({ ...prev, stage: 'rights_result' }));
+      }
+    } else if (currentStep === 2 && state.stage === 'rights_result' && state.tamhil) {
+      // Going forward to step 2 - show tamhil_result if we have data
+      setState(prev => ({ ...prev, stage: 'tamhil_result' }));
+    }
+  }, [currentStep]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -158,12 +256,12 @@ const ZoningAnalysis: React.FC = () => {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center space-y-12">
         <div className="relative">
-          <div className="w-24 h-24 border-2 border-pink-400/5 rounded-full animate-ping absolute inset-0"></div>
-          <div className="w-24 h-24 border-4 border-pink-400/10 border-t-pink-400 rounded-full animate-spin"></div>
+          <div className="w-24 h-24 border-2 border-amber-400/5 rounded-full animate-ping absolute inset-0"></div>
+          <div className="w-24 h-24 border-4 border-amber-400/10 border-t-amber-400 rounded-full animate-spin"></div>
         </div>
         <div className="space-y-4">
           <h2 className="text-4xl font-light uppercase tracking-tighter">Stage 1: Extracting Rights</h2>
-          <div className="flex justify-center gap-8 text-[10px] mono uppercase text-pink-400/40 tracking-widest">
+          <div className="flex justify-center gap-8 text-[10px] mono uppercase text-amber-400/40 tracking-widest">
             <span className="animate-pulse">1. OCR Processing...</span>
             <span className="animate-pulse" style={{ animationDelay: '0.5s' }}>2. Parsing Tables...</span>
             <span className="animate-pulse" style={{ animationDelay: '1s' }}>3. Extracting Rights...</span>
@@ -181,12 +279,12 @@ const ZoningAnalysis: React.FC = () => {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center space-y-12">
         <div className="relative">
-          <div className="w-24 h-24 border-2 border-green-400/5 rounded-full animate-ping absolute inset-0"></div>
-          <div className="w-24 h-24 border-4 border-green-400/10 border-t-green-400 rounded-full animate-spin"></div>
+          <div className="w-24 h-24 border-2 border-amber-400/5 rounded-full animate-ping absolute inset-0"></div>
+          <div className="w-24 h-24 border-4 border-amber-400/10 border-t-amber-400 rounded-full animate-spin"></div>
         </div>
         <div className="space-y-4">
           <h2 className="text-4xl font-light uppercase tracking-tighter">Stage 2: Generating Tamhil</h2>
-          <div className="flex justify-center gap-8 text-[10px] mono uppercase text-green-400/40 tracking-widest">
+          <div className="flex justify-center gap-8 text-[10px] mono uppercase text-amber-400/40 tracking-widest">
             <span className="animate-pulse">1. Optimizing Unit Mix...</span>
             <span className="animate-pulse" style={{ animationDelay: '0.5s' }}>2. Floor Distribution...</span>
             <span className="animate-pulse" style={{ animationDelay: '1s' }}>3. Finalizing Plan...</span>
@@ -201,7 +299,17 @@ const ZoningAnalysis: React.FC = () => {
 
   // Tamhil Result view
   if (state.stage === 'tamhil_result' && state.tamhil) {
-    return <TamhilView tamhil={state.tamhil} rights={state.result} onBack={backToRights} onReset={resetAnalysis} />;
+    return (
+      <TamhilView 
+        tamhil={state.tamhil} 
+        rights={state.result} 
+        onBack={backToRights} 
+        onReset={resetAnalysis}
+        onSave={saveProject}
+        isSaving={isSaving}
+        saveMessage={saveMessage}
+      />
+    );
   }
 
   // Rights Result view (Stage 1 complete)
@@ -211,7 +319,10 @@ const ZoningAnalysis: React.FC = () => {
         result={state.result} 
         report={state.report} 
         onGenerateTamhil={handleGenerateTamhil}
-        onReset={resetAnalysis} 
+        onReset={resetAnalysis}
+        onSave={saveProject}
+        isSaving={isSaving}
+        saveMessage={saveMessage}
       />
     );
   }
@@ -223,19 +334,6 @@ const ZoningAnalysis: React.FC = () => {
       <div className="text-center space-y-2">
         <h1 className="text-2xl md:text-4xl font-light uppercase tracking-tighter">Planning Rights Analysis</h1>
         <p className="text-white/40 text-xs md:text-sm">Upload zoning documents and enter parcel details to extract structured rights</p>
-      </div>
-
-      {/* Progress indicator */}
-      <div className="flex items-center justify-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-bold">1</div>
-          <span className="text-xs text-white/60">Extract Rights</span>
-        </div>
-        <div className="w-12 h-[2px] bg-white/20"></div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-white/10 text-white/40 flex items-center justify-center text-xs font-bold">2</div>
-          <span className="text-xs text-white/40">Generate Tamhil</span>
-        </div>
       </div>
 
       {/* Error message */}
@@ -256,7 +354,7 @@ const ZoningAnalysis: React.FC = () => {
             value={state.gush}
             onChange={e => setState(prev => ({ ...prev, gush: e.target.value }))}
             placeholder="e.g., 8234"
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-pink-400/50 focus:outline-none transition-colors"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-amber-400/50 focus:outline-none transition-colors"
           />
         </div>
         <div className="space-y-2">
@@ -266,7 +364,7 @@ const ZoningAnalysis: React.FC = () => {
             value={state.helka}
             onChange={e => setState(prev => ({ ...prev, helka: e.target.value }))}
             placeholder="e.g., 105"
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-pink-400/50 focus:outline-none transition-colors"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-amber-400/50 focus:outline-none transition-colors"
           />
         </div>
       </div>
@@ -277,7 +375,7 @@ const ZoningAnalysis: React.FC = () => {
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={`relative border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${
-          isDragging ? 'border-pink-400 bg-pink-400/5' : 'border-white/20 hover:border-white/40'
+          isDragging ? 'border-amber-400 bg-amber-400/5' : 'border-white/20 hover:border-white/40'
         }`}
       >
         <input
@@ -308,8 +406,8 @@ const ZoningAnalysis: React.FC = () => {
             {state.documents.map(doc => (
               <div key={doc.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-pink-400/20 rounded flex items-center justify-center">
-                    <span className="text-pink-400 text-xs">PDF</span>
+                  <div className="w-8 h-8 bg-amber-400/20 rounded flex items-center justify-center">
+                    <span className="text-amber-400 text-xs">PDF</span>
                   </div>
                   <span className="text-sm text-white/80">{doc.name}</span>
                 </div>
@@ -330,14 +428,14 @@ const ZoningAnalysis: React.FC = () => {
         <button
           onClick={handleAnalyze}
           disabled={!state.gush || !state.helka || state.documents.length === 0}
-          className="px-12 py-4 rounded-full bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold hover:from-pink-400 hover:to-pink-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm uppercase tracking-wider shadow-lg shadow-pink-500/20"
+          className="px-12 py-4 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-400 hover:to-amber-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20"
         >
           Stage 1: Extract Building Rights
         </button>
       </div>
     </div>
   );
-};
+});
 
 // Rights Result component (Stage 1 output)
 const RightsResultView: React.FC<{
@@ -345,11 +443,14 @@ const RightsResultView: React.FC<{
   report: string | null;
   onGenerateTamhil: () => void;
   onReset: () => void;
-}> = ({ result, report, onGenerateTamhil, onReset }) => {
+  onSave: () => void;
+  isSaving: boolean;
+  saveMessage: string | null;
+}> = ({ result, report, onGenerateTamhil, onReset, onSave, isSaving, saveMessage }) => {
   const [showJson, setShowJson] = useState(false);
 
   const confidenceColors = {
-    high: 'text-green-400 bg-green-400/10 border-green-400/30',
+    high: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
     medium: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
     low: 'text-red-400 bg-red-400/10 border-red-400/30',
   };
@@ -362,19 +463,6 @@ const RightsResultView: React.FC<{
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0">
-      {/* Progress indicator */}
-      <div className="flex items-center justify-center gap-2 md:gap-4">
-        <div className="flex items-center gap-1 md:gap-2">
-          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] md:text-xs font-bold">✓</div>
-          <span className="text-[10px] md:text-xs text-green-400 hidden sm:inline">Extract Rights</span>
-        </div>
-        <div className="w-8 md:w-12 h-[2px] bg-green-500"></div>
-        <div className="flex items-center gap-1 md:gap-2">
-          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-pink-500 text-white flex items-center justify-center text-[10px] md:text-xs font-bold">2</div>
-          <span className="text-[10px] md:text-xs text-white/60 hidden sm:inline">Generate Tamhil</span>
-        </div>
-      </div>
-
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="text-center md:text-left">
@@ -389,6 +477,22 @@ const RightsResultView: React.FC<{
             className="px-3 md:px-4 py-2 text-[10px] md:text-xs mono uppercase border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
           >
             {showJson ? 'Cards' : 'JSON'}
+          </button>
+          <button
+            onClick={onSave}
+            disabled={isSaving}
+            className="px-4 md:px-6 py-2 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 hover:bg-amber-500/30 disabled:opacity-50 transition-colors text-xs md:text-sm flex items-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <div className="w-3 h-3 border-2 border-amber-400/20 border-t-amber-400 rounded-full animate-spin"></div>
+                Saving...
+              </>
+            ) : saveMessage ? (
+              <>✓ {saveMessage}</>
+            ) : (
+              '💾 Save'
+            )}
           </button>
           <button
             onClick={onReset}
@@ -407,7 +511,7 @@ const RightsResultView: React.FC<{
 
       {showJson ? (
         <div className="bg-black/50 border border-white/10 rounded-xl p-6 overflow-auto">
-          <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+          <pre className="text-xs text-amber-400 font-mono whitespace-pre-wrap">
             {JSON.stringify(result, null, 2)}
           </pre>
         </div>
@@ -415,7 +519,7 @@ const RightsResultView: React.FC<{
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Parcel Info Card */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-            <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400">Parcel Details</h3>
+            <h3 className="text-[10px] mono uppercase tracking-widest text-amber-400">Parcel Details</h3>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-white/40">Gush:</span>
@@ -434,11 +538,11 @@ const RightsResultView: React.FC<{
 
           {/* Building Rights Card */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-            <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400">Building Rights</h3>
+            <h3 className="text-[10px] mono uppercase tracking-widest text-amber-400">Building Rights</h3>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-white/40">Max Units:</span>
-                <span className="font-bold text-lg text-pink-400">{result.rights.max_units}</span>
+                <span className="font-bold text-lg text-amber-400">{result.rights.max_units}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-white/40">Main Area:</span>
@@ -458,14 +562,14 @@ const RightsResultView: React.FC<{
       )}
 
       {/* Generate Tamhil CTA */}
-      <div className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-500/30 rounded-2xl p-8 text-center space-y-4">
+      <div className="bg-gradient-to-r from-amber-900/30 to-amber-800/20 border border-amber-500/30 rounded-2xl p-8 text-center space-y-4">
         <h3 className="text-xl font-light uppercase tracking-tighter">Ready for Stage 2</h3>
         <p className="text-white/60 text-sm max-w-lg mx-auto">
           Based on the extracted rights, generate an optimal unit mix (Tamhil) with floor-by-floor breakdown.
         </p>
         <button
           onClick={onGenerateTamhil}
-          className="px-12 py-4 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold hover:from-green-400 hover:to-emerald-500 transition-all text-sm uppercase tracking-wider shadow-lg shadow-green-500/20"
+          className="px-12 py-4 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-400 hover:to-amber-500 transition-all text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20"
         >
           Stage 2: Generate Tamhil
         </button>
@@ -490,36 +594,44 @@ const RightsResultView: React.FC<{
 };
 
 // Tamhil View component (Stage 2 output)
-// Color mapping for unit types - matching PDF exactly
+// Professional color palette for real estate visualization
 const unitColors: Record<string, string> = {
-  n3: '#81C784',      // Green - for 81 sqm
-  n4: '#FFD54F',      // Yellow - for 109, 115 sqm
-  n5: '#81C784',      // Green - for 135, 145 sqm (same as PDF)
-  mini_ph: '#CE93D8', // Purple - for 154 sqm
-  ph: '#4FC3F7',      // Cyan - for 180 sqm penthouses
-  commercial: '#9E9E9E', // Grey
-  lobby: '#9E9E9E',   // Grey
-  pool: '#64B5F6',    // Light blue
-  club: '#FFB74D',    // Amber/Orange
-  '3room': '#81C784',
-  '4room': '#FFD54F',
-  '5room': '#81C784',
-  'penthouse': '#4FC3F7',
-  'mini-penthouse': '#CE93D8',
-  'בריכה': '#64B5F6',
-  'מועדון': '#FFB74D',
-  'מסחר': '#9E9E9E',
-  'לובי': '#9E9E9E',
+  // Residential by size
+  n3: '#5BC07A',         // 81 sqm - Green
+  n4: '#F4C84A',         // 109 sqm - Gold
+  n4_115: '#E8A93B',     // 115 sqm - Amber
+  n5: '#F08A5D',         // 135 sqm - Coral
+  n5_145: '#E05A5A',     // 145 sqm - Red
+  mini_ph: '#B86AD9',    // 154 sqm - Purple
+  ph: '#20B7B0',         // 180 sqm Penthouse - Teal
+  // Non-residential
+  commercial: '#6B7280', // Commercial - Gray
+  lobby: '#D7DEE8',      // Entrance Lobby - Light gray
+  storage: '#374151',    // Storage - Dark gray
+  pool: '#2F7CF6',       // Pool - Blue
+  club: '#7C3AED',       // Club/Amenities - Violet
+  // Hebrew aliases
+  '3room': '#5BC07A',
+  '4room': '#F4C84A',
+  '5room': '#F08A5D',
+  'penthouse': '#20B7B0',
+  'mini-penthouse': '#B86AD9',
+  'בריכה': '#2F7CF6',
+  'מועדון': '#7C3AED',
+  'מסחר': '#6B7280',
+  'לובי': '#D7DEE8',
 };
 
-// Get color based on unit size (matching PDF pattern exactly)
+// Get color based on unit size - each size is clearly distinguishable
 const getColorBySize = (size: number): string => {
-  if (size >= 180) return '#81C784';      // Green - Penthouse (180)
-  if (size >= 150) return '#A5D6A7';      // Light green - Mini PH (154)
-  if (size >= 130) return '#C8E6C9';      // Very light green - n5 (135, 145)
-  if (size >= 100) return '#FFD54F';      // Yellow - n4 (109, 110, 115)
-  if (size >= 75) return '#E8F5E9';       // Very light/white-green - n3 (81)
-  return '#BDBDBD';                        // Grey - other
+  if (size >= 180) return '#20B7B0';      // Teal - Penthouse (180)
+  if (size >= 154) return '#B86AD9';      // Purple - Mini PH (154)
+  if (size >= 145) return '#E05A5A';      // Red - n5 large (145)
+  if (size >= 135) return '#F08A5D';      // Coral - n5 (135)
+  if (size >= 115) return '#E8A93B';      // Amber - n4 large (115)
+  if (size >= 109) return '#F4C84A';      // Gold - n4 (109)
+  if (size >= 81) return '#5BC07A';       // Green - n3 (81)
+  return '#6B7280';                        // Gray - other
 };
 
 const TamhilView: React.FC<{
@@ -527,24 +639,14 @@ const TamhilView: React.FC<{
   rights: PlanningRightsObject | null;
   onBack: () => void;
   onReset: () => void;
-}> = ({ tamhil, rights, onBack, onReset }) => {
+  onSave: () => void;
+  isSaving: boolean;
+  saveMessage: string | null;
+}> = ({ tamhil, rights, onBack, onReset, onSave, isSaving, saveMessage }) => {
   const [viewMode, setViewMode] = useState<'building' | 'summary' | 'floors' | 'json'>('building');
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0">
-      {/* Progress indicator */}
-      <div className="flex items-center justify-center gap-2 md:gap-4">
-        <div className="flex items-center gap-1 md:gap-2">
-          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] md:text-xs font-bold">✓</div>
-          <span className="text-[10px] md:text-xs text-green-400 hidden sm:inline">Extract Rights</span>
-        </div>
-        <div className="w-8 md:w-12 h-[2px] bg-green-500"></div>
-        <div className="flex items-center gap-1 md:gap-2">
-          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] md:text-xs font-bold">✓</div>
-          <span className="text-[10px] md:text-xs text-green-400 hidden sm:inline">Generate Tamhil</span>
-        </div>
-      </div>
-
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="text-center md:text-left">
@@ -557,62 +659,70 @@ const TamhilView: React.FC<{
           <div className="flex flex-wrap justify-center bg-white/5 border border-white/10 rounded-lg p-1">
             <button
               onClick={() => setViewMode('building')}
-              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'building' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'building' ? 'bg-amber-500 text-white' : 'text-white/50 hover:text-white'}`}
             >
               🏢 Building
             </button>
             <button
               onClick={() => setViewMode('summary')}
-              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'summary' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'summary' ? 'bg-amber-500 text-white' : 'text-white/50 hover:text-white'}`}
             >
               Summary
             </button>
             <button
               onClick={() => setViewMode('floors')}
-              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'floors' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'floors' ? 'bg-amber-500 text-white' : 'text-white/50 hover:text-white'}`}
             >
               Floors
             </button>
             <button
               onClick={() => setViewMode('json')}
-              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'json' ? 'bg-pink-500 text-white' : 'text-white/50 hover:text-white'}`}
+              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'json' ? 'bg-amber-500 text-white' : 'text-white/50 hover:text-white'}`}
             >
               JSON
             </button>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={onBack}
-              className="px-3 md:px-4 py-2 text-[10px] md:text-xs mono uppercase border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
-            >
-              Back
-            </button>
-            <button
-              onClick={onReset}
-              className="px-4 md:px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-xs md:text-sm"
-            >
-              Start Over
-            </button>
-          </div>
+          <button
+            onClick={onSave}
+            disabled={isSaving}
+            className="px-4 md:px-6 py-2 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 hover:bg-amber-500/30 disabled:opacity-50 transition-colors text-xs md:text-sm flex items-center gap-2"
+          >
+            {isSaving ? (
+              <>
+                <div className="w-3 h-3 border-2 border-amber-400/20 border-t-amber-400 rounded-full animate-spin"></div>
+                Saving...
+              </>
+            ) : saveMessage ? (
+              <>✓ {saveMessage}</>
+            ) : (
+              '💾 Save'
+            )}
+          </button>
+          <button
+            onClick={onReset}
+            className="px-4 md:px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-xs md:text-sm"
+          >
+            Start Over
+          </button>
         </div>
       </div>
 
       {/* Building Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-pink-500/20 to-pink-600/10 border border-pink-500/30 rounded-xl p-4 text-center">
-          <p className="text-3xl font-bold text-pink-400">{tamhil.building_summary.total_units}</p>
+        <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-4 text-center">
+          <p className="text-3xl font-bold text-amber-400">{tamhil.building_summary.total_units}</p>
           <p className="text-[10px] mono uppercase text-white/40 mt-1">Total Units</p>
         </div>
-        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-4 text-center">
-          <p className="text-3xl font-bold text-blue-400">{tamhil.building_summary.floors_above_ground}</p>
+        <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-4 text-center">
+          <p className="text-3xl font-bold text-amber-400">{tamhil.building_summary.floors_above_ground}</p>
           <p className="text-[10px] mono uppercase text-white/40 mt-1">Floors Above Ground</p>
         </div>
-        <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-xl p-4 text-center">
-          <p className="text-3xl font-bold text-green-400">{(tamhil.building_summary.total_main_area_sqm || 0).toLocaleString()}</p>
+        <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-4 text-center">
+          <p className="text-3xl font-bold text-amber-400">{(tamhil.building_summary.total_main_area_sqm || 0).toLocaleString()}</p>
           <p className="text-[10px] mono uppercase text-white/40 mt-1">Main Area (sqm)</p>
         </div>
-        <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30 rounded-xl p-4 text-center">
-          <p className="text-3xl font-bold text-purple-400">{(tamhil.building_summary.total_balcony_area_sqm || 0).toLocaleString()}</p>
+        <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-4 text-center">
+          <p className="text-3xl font-bold text-amber-400">{(tamhil.building_summary.total_balcony_area_sqm || 0).toLocaleString()}</p>
           <p className="text-[10px] mono uppercase text-white/40 mt-1">Balcony Area (sqm)</p>
         </div>
       </div>
@@ -627,19 +737,21 @@ const TamhilView: React.FC<{
             
             <div className="min-w-[1000px]">
               <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
-                <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400">Building Visualization</h3>
+                <h3 className="text-[10px] mono uppercase tracking-widest text-amber-400">Building Visualization</h3>
                 {/* Legend - matching PDF colors exactly */}
                 <div className="flex flex-wrap gap-2 md:gap-3">
                   {[
-                    { label: '81 sqm', color: '#E8F5E9' },
-                    { label: '109-115 sqm', color: '#FFD54F' },
-                    { label: '135-145 sqm', color: '#C8E6C9' },
-                    { label: '154 sqm', color: '#A5D6A7' },
-                    { label: '180 sqm (PH)', color: '#81C784' },
-                    { label: 'מסחר', color: '#9E9E9E' },
-                    { label: 'לובי כניסה', color: '#BDBDBD' },
-                    { label: 'בריכה', color: '#90CAF9' },
-                    { label: 'מועדון', color: '#FFF176' },
+                    { label: '81 sqm', color: '#5BC07A' },
+                    { label: '109 sqm', color: '#F4C84A' },
+                    { label: '115 sqm', color: '#E8A93B' },
+                    { label: '135 sqm', color: '#F08A5D' },
+                    { label: '145 sqm', color: '#E05A5A' },
+                    { label: '154 sqm', color: '#B86AD9' },
+                    { label: '180 sqm (PH)', color: '#20B7B0' },
+                    { label: 'מסחר', color: '#6B7280' },
+                    { label: 'לובי כניסה', color: '#D7DEE8' },
+                    { label: 'בריכה', color: '#2F7CF6' },
+                    { label: 'מועדון', color: '#7C3AED' },
                   ].map(({ label, color }, i) => (
                     <div key={i} className="flex items-center gap-1">
                       <div className="w-3 h-3 border border-gray-500" style={{ backgroundColor: color }}></div>
@@ -754,15 +866,20 @@ const TamhilView: React.FC<{
                 
                 const getColor = (val: number | string) => {
                   if (typeof val === 'string') {
-                    if (val === 'ק.טכנית') return '#E0E0E0';
-                    if (val === 'מסחר') return '#9E9E9E';
-                    if (val === 'לובי כניסה') return '#B0BEC5';
-                    return '#E0E0E0';
+                    if (val === 'ק.טכנית') return '#374151';
+                    if (val === 'מסחר') return '#6B7280';
+                    if (val === 'לובי כניסה') return '#D7DEE8';
+                    return '#374151';
                   }
-                  if (val <= 85) return '#81C784'; // n3 green
-                  if (val <= 120) return '#FFD54F'; // n4 yellow
-                  if (val <= 155) return '#FF8A65'; // n5 orange
-                  return '#4FC3F7'; // ph blue
+                  // Each size has a distinct color
+                  if (val === 81) return '#5BC07A';   // Green - 81 sqm
+                  if (val === 109) return '#F4C84A';  // Gold - 109 sqm
+                  if (val === 115) return '#E8A93B';  // Amber - 115 sqm
+                  if (val === 135) return '#F08A5D';  // Coral - 135 sqm
+                  if (val === 145) return '#E05A5A';  // Red - 145 sqm
+                  if (val === 154) return '#B86AD9';  // Purple - 154 sqm
+                  if (val === 180) return '#20B7B0';  // Teal - 180 sqm (Penthouse)
+                  return '#6B7280';                    // Gray - other
                 };
                 
                 return (
@@ -779,14 +896,14 @@ const TamhilView: React.FC<{
                             </div>
                           ))}
                           {f.type === 'floor1' && (
-                            <div className="h-8 flex-1 flex items-center justify-center text-black text-[10px] font-bold border border-yellow-400 bg-yellow-300">מועדון</div>
+                            <div className="h-8 flex-1 flex items-center justify-center text-white text-[10px] font-bold border border-violet-600" style={{ backgroundColor: '#7C3AED' }}>מועדון</div>
                           )}
                         </div>
                         
                         {/* Gap */}
                         <div className={`${f.hasCommercialGap ? 'w-32' : 'w-20'} flex items-center justify-center`}>
                           {f.hasPool && (
-                            <div className="w-full h-8 bg-blue-200 flex items-center justify-center text-black text-[10px] font-bold border border-gray-500">בריכה</div>
+                            <div className="w-full h-8 flex items-center justify-center text-white text-[10px] font-bold border border-blue-700" style={{ backgroundColor: '#2F7CF6' }}>בריכה</div>
                           )}
                           {f.hasCommercialGap && (
                             <div className="w-full h-8 bg-gray-400 flex items-center justify-center text-black text-[10px] font-bold border border-gray-500">מסחר</div>
@@ -796,7 +913,7 @@ const TamhilView: React.FC<{
                         {/* Tower 2 */}
                         <div className="flex-1 flex border border-gray-600">
                           {f.type === 'floor1' && (
-                            <div className="h-8 flex-1 flex items-center justify-center text-black text-[10px] font-bold border border-yellow-400 bg-yellow-300">מועדון</div>
+                            <div className="h-8 flex-1 flex items-center justify-center text-white text-[10px] font-bold border border-violet-600" style={{ backgroundColor: '#7C3AED' }}>מועדון</div>
                           )}
                           {f.tower2.map((val, j) => (
                             <div key={j} className={`${f.type === 'tech' ? 'h-6' : 'h-8'} flex-1 flex items-center justify-center text-gray-800 font-bold text-[11px] border border-gray-400`} style={{ backgroundColor: getColor(val) }}>
@@ -830,7 +947,7 @@ const TamhilView: React.FC<{
 
           {/* Unit Distribution - CALCULATED FROM floor_plans for 100% accuracy */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-            <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400 mb-4">Unit Distribution</h3>
+            <h3 className="text-[10px] mono uppercase tracking-widest text-amber-400 mb-4">Unit Distribution</h3>
             <div className="space-y-3">
               {(() => {
                 // Calculate from floor_plans (same logic as סיכום תמהיל)
@@ -911,7 +1028,7 @@ const TamhilView: React.FC<{
           {/* Unit Mix Summary Table - CALCULATED FROM floor_plans for consistency */}
           <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-white/10">
-              <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400">Unit Mix Summary</h3>
+              <h3 className="text-[10px] mono uppercase tracking-widest text-amber-400">Unit Mix Summary</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -976,7 +1093,7 @@ const TamhilView: React.FC<{
                           </td>
                           <td className="px-6 py-3 text-center text-white/60">{row.rooms}</td>
                           <td className="px-6 py-3 text-center text-white/60">{row.avgSize}</td>
-                          <td className="px-6 py-3 text-center font-bold text-pink-400">{row.count}</td>
+                          <td className="px-6 py-3 text-center font-bold text-amber-400">{row.count}</td>
                           <td className="px-6 py-3 text-center text-white/60">{row.totalArea.toLocaleString()}</td>
                           <td className="px-6 py-3 text-center">
                             <span className="px-2 py-1 bg-white/10 rounded text-xs">{row.percentage}%</span>
@@ -1010,7 +1127,7 @@ const TamhilView: React.FC<{
       {viewMode === 'floors' && (
         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-white/10">
-            <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400">Floor-by-Floor Breakdown</h3>
+            <h3 className="text-[10px] mono uppercase tracking-widest text-amber-400">Floor-by-Floor Breakdown</h3>
           </div>
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full">
@@ -1031,7 +1148,7 @@ const TamhilView: React.FC<{
                       <span className={`px-2 py-1 rounded text-xs ${
                         floor.floor_type === 'penthouse' ? 'bg-purple-500/20 text-purple-400' :
                         floor.floor_type === 'ground' ? 'bg-blue-500/20 text-blue-400' :
-                        floor.floor_type === 'typical' ? 'bg-green-500/20 text-green-400' :
+                        floor.floor_type === 'typical' ? 'bg-amber-500/20 text-amber-400' :
                         'bg-white/10 text-white/60'
                       }`}>
                         {floor.floor_type}
@@ -1062,7 +1179,7 @@ const TamhilView: React.FC<{
 
       {viewMode === 'json' && (
         <div className="bg-black/50 border border-white/10 rounded-xl p-6 overflow-auto max-h-[600px]">
-          <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+          <pre className="text-xs text-amber-400 font-mono whitespace-pre-wrap">
             {JSON.stringify(tamhil, null, 2)}
           </pre>
         </div>
@@ -1071,7 +1188,7 @@ const TamhilView: React.FC<{
       {/* Comparison with Rights */}
       {rights && (
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-          <h3 className="text-[10px] mono uppercase tracking-widest text-pink-400">Rights vs. Generated</h3>
+          <h3 className="text-[10px] mono uppercase tracking-widest text-amber-400">Rights vs. Generated</h3>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <p className="text-[10px] mono uppercase text-white/40">Metric</p>
@@ -1085,15 +1202,15 @@ const TamhilView: React.FC<{
             
             <div className="text-center py-2 border-t border-white/10">Units</div>
             <div className="text-center py-2 border-t border-white/10 font-medium">{rights.rights.max_units}</div>
-            <div className="text-center py-2 border-t border-white/10 font-bold text-green-400">{tamhil.building_summary.total_units}</div>
+            <div className="text-center py-2 border-t border-white/10 font-bold text-amber-400">{tamhil.building_summary.total_units}</div>
             
             <div className="text-center py-2 border-t border-white/10">Main Area (sqm)</div>
             <div className="text-center py-2 border-t border-white/10 font-medium">{rights.rights.main_area_sqm.toLocaleString()}</div>
-            <div className="text-center py-2 border-t border-white/10 font-bold text-green-400">{tamhil.building_summary.total_main_area_sqm.toLocaleString()}</div>
+            <div className="text-center py-2 border-t border-white/10 font-bold text-amber-400">{tamhil.building_summary.total_main_area_sqm.toLocaleString()}</div>
             
             <div className="text-center py-2 border-t border-white/10">Floors</div>
             <div className="text-center py-2 border-t border-white/10 font-medium">{rights.rights.floors_max}</div>
-            <div className="text-center py-2 border-t border-white/10 font-bold text-green-400">{tamhil.building_summary.floors_above_ground}</div>
+            <div className="text-center py-2 border-t border-white/10 font-bold text-amber-400">{tamhil.building_summary.floors_above_ground}</div>
           </div>
         </div>
       )}
