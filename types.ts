@@ -234,12 +234,13 @@ export interface TamhilOutput {
 }
 
 export interface ZoningAnalysisState {
-  stage: 'input' | 'processing' | 'rights_result' | 'generating_tamhil' | 'tamhil_result';
+  stage: 'input' | 'processing' | 'rights_result' | 'generating_tamhil' | 'tamhil_result' | 'generating_massing' | 'massing_result';
   gush: string;
   helka: string;
   documents: ZoningDocument[];
   result: PlanningRightsObject | null;
   report: string | null;
   tamhil: TamhilOutput | null;
+  massing: any | null; // Massing alternative data
   error: string | null;
 }
