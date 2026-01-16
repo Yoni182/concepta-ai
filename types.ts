@@ -234,7 +234,7 @@ export interface TamhilOutput {
 }
 
 export interface ZoningAnalysisState {
-  stage: 'input' | 'processing' | 'rights_result' | 'generating_tamhil' | 'tamhil_result' | 'generating_massing' | 'massing_result';
+  stage: 'input' | 'processing' | 'rights_result' | 'generating_tamhil' | 'tamhil_result' | 'generating_massing' | 'massing_result' | 'visualization_step' | 'visualization_analyzing' | 'visualization_generating' | 'visualization_result';
   gush: string;
   helka: string;
   documents: ZoningDocument[];
@@ -243,4 +243,48 @@ export interface ZoningAnalysisState {
   tamhil: TamhilOutput | null;
   massing: any | null; // Massing alternative data
   error: string | null;
+}
+
+// ============================================
+// STAGE 4: VISUALIZATION TYPES
+// ============================================
+
+export interface DesignDNA {
+  architectural_style: string;
+  facade_language: string;
+  material_palette: string[];
+  color_scheme: {
+    primary: string;
+    secondary: string[];
+    accent: string;
+  };
+  proportional_logic: string;
+  fenestration_pattern: string;
+  vertical_rhythm: string;
+  horizontal_banding: string;
+  surface_articulation: string;
+  human_scale_elements: string;
+}
+
+export interface StyledMassing {
+  id: string;
+  reference_image_base64: string;
+  design_dna: DesignDNA;
+  massing_geometry: any; // From selected MassingAlternative
+  styled_materials: {
+    primary_material: {
+      name: string;
+      color: string;
+      texture: string;
+    };
+    secondary_materials: Array<{
+      name: string;
+      color: string;
+      texture: string;
+      area_percent: number;
+    }>;
+    accent_color: string;
+  };
+  design_description: string;
+  generated_at: string;
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlanningRightsObject, TamhilOutput } from '../../types';
 import MassingView from './MassingView';
 
@@ -24,6 +24,10 @@ interface MassingAnalysisProps {
   tamhil: TamhilOutput;
   onSelectMassing: (massing: MassingAlternative) => void;
   onReset: () => void;
+  onProceedToVisualization?: (massing: MassingAlternative) => void;
+  onBack?: () => void;
+  isDetailView?: boolean;
+  selectedMassing?: MassingAlternative | null;
 }
 
 const MassingAnalysis: React.FC<MassingAnalysisProps> = ({
@@ -31,12 +35,25 @@ const MassingAnalysis: React.FC<MassingAnalysisProps> = ({
   tamhil,
   onSelectMassing,
   onReset,
+  onProceedToVisualization,
+  onBack,
+  isDetailView = false,
+  selectedMassing = null,
 }) => {
   const [alternatives, setAlternatives] = useState<MassingAlternative[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(selectedMassing?.id || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'compare' | 'detail'>('compare');
+  const [viewMode, setViewMode] = useState<'compare' | 'detail'>(isDetailView ? 'detail' : 'compare');
+
+  // Sync viewMode when isDetailView prop changes
+  useEffect(() => {
+    if (isDetailView) {
+      setViewMode('detail');
+    } else {
+      setViewMode('compare');
+    }
+  }, [isDetailView]);
 
   const handleGenerateMassing = async () => {
     setLoading(true);
@@ -311,19 +328,38 @@ const MassingAnalysis: React.FC<MassingAnalysisProps> = ({
           </div>
 
           {/* Selection CTA */}
-          <div className="flex gap-4">
-            <button
-              onClick={() => onSelectMassing(selectedAlternative)}
-              className="flex-1 py-3 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-400 hover:to-amber-500 transition-all text-sm uppercase tracking-wider"
-            >
-              Proceed with this Massing
-            </button>
-            <button
-              onClick={onReset}
-              className="px-6 py-3 rounded-full border border-white/20 text-white/60 hover:bg-white/5 transition-colors text-sm"
-            >
-              Try Again
-            </button>
+          <div className="flex gap-4 flex-col md:flex-row">
+            {isDetailView ? (
+              <>
+                <button
+                  onClick={() => onProceedToVisualization?.(selectedAlternative)}
+                  className="flex-1 py-3 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-400 hover:to-amber-500 transition-all text-sm uppercase tracking-wider"
+                >
+                  Proceed to 3D Visualization (Step 4)
+                </button>
+                <button
+                  onClick={onBack}
+                  className="px-6 py-3 rounded-full border border-white/20 text-white/60 hover:bg-white/5 transition-colors text-sm"
+                >
+                  Back to Selection
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => onSelectMassing(selectedAlternative)}
+                  className="flex-1 py-3 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-400 hover:to-amber-500 transition-all text-sm uppercase tracking-wider"
+                >
+                  Proceed with this Massing
+                </button>
+                <button
+                  onClick={onReset}
+                  className="px-6 py-3 rounded-full border border-white/20 text-white/60 hover:bg-white/5 transition-colors text-sm"
+                >
+                  Try Again
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

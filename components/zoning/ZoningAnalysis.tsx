@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { ZoningAnalysisState, ZoningDocument, PlanningRightsObject, TamhilOutput } from '../../types';
+import { ZoningAnalysisState, ZoningDocument, PlanningRightsObject, TamhilOutput, StyledMassing } from '../../types';
 import { useAuth } from '../../services/authContext';
 import { Project, createProject, updateProject } from '../../services/projectsService';
 import MassingAnalysis from './MassingAnalysis';
+import VisualizationStep from './VisualizationStep';
 
 interface ZoningAnalysisProps {
   onStepChange?: (step: number) => void;
@@ -32,6 +33,7 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [styledMassing, setStyledMassing] = useState<StyledMassing | null>(null);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -99,6 +101,10 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
         onStepChange(2); // Step 2 until massing is selected
       } else if (state.stage === 'massing_result') {
         onStepChange(3); // Step 3 when massing is selected
+      } else if (state.stage === 'visualization_step' || state.stage === 'visualization_analyzing' || state.stage === 'visualization_generating') {
+        onStepChange(4); // Step 4 for visualization
+      } else if (state.stage === 'visualization_result') {
+        onStepChange(4); // Step 4 result
       }
     }
   }, [state.stage, onStepChange]);
@@ -116,15 +122,29 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
       if (state.result) {
         setState(prev => ({ ...prev, stage: 'rights_result' }));
       }
+    } else if (currentStep === 1 && (state.stage === 'visualization_step' || state.stage === 'visualization_analyzing' || state.stage === 'visualization_generating' || state.stage === 'visualization_result')) {
+      // Going back to step 1 from step 4 - show rights_result if we have data
+      if (state.result) {
+        setState(prev => ({ ...prev, stage: 'rights_result' }));
+      }
     } else if (currentStep === 2 && state.stage === 'rights_result' && state.tamhil) {
       // Going forward to step 2 - show tamhil_result if we have data
       setState(prev => ({ ...prev, stage: 'tamhil_result' }));
     } else if (currentStep === 2 && state.stage === 'massing_result') {
       // Going back to step 2 from step 3 - show tamhil_result
       setState(prev => ({ ...prev, stage: 'tamhil_result' }));
+    } else if (currentStep === 2 && (state.stage === 'visualization_step' || state.stage === 'visualization_analyzing' || state.stage === 'visualization_generating' || state.stage === 'visualization_result')) {
+      // Going back to step 2 from step 4 - show tamhil_result
+      setState(prev => ({ ...prev, stage: 'tamhil_result' }));
     } else if (currentStep === 3 && state.stage === 'tamhil_result' && state.massing) {
       // Going forward to step 3 - show massing_result
       setState(prev => ({ ...prev, stage: 'massing_result' }));
+    } else if (currentStep === 3 && (state.stage === 'visualization_step' || state.stage === 'visualization_analyzing' || state.stage === 'visualization_generating' || state.stage === 'visualization_result')) {
+      // Going back to step 3 from step 4 - show massing_result
+      setState(prev => ({ ...prev, stage: 'massing_result' }));
+    } else if (currentStep === 4 && state.stage === 'massing_result' && state.massing) {
+      // Going forward to step 4 - show visualization_step
+      setState(prev => ({ ...prev, stage: 'visualization_step' }));
     }
   }, [currentStep]);
 
@@ -249,6 +269,40 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
     }
   };
 
+  const handleGenerateMassing = async () => {
+    if (!state.result || !state.tamhil) {
+      setState(prev => ({ ...prev, error: 'Missing planning rights or tamhil data' }));
+      return;
+    }
+
+    setState(prev => ({ ...prev, stage: 'generating_massing' }));
+
+    try {
+      const response = await fetch('/api/zoning/generate-massing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planningRights: state.result,
+          tamhil: state.tamhil,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to generate massing');
+      }
+
+      const data = await response.json();
+      setState(prev => ({
+        ...prev,
+        stage: 'massing_result',
+        massing: data.massingAlternatives?.[0] || null,
+      }));
+    } catch (err: any) {
+      setState(prev => ({ ...prev, stage: 'tamhil_result', error: err.message }));
+    }
+  };
+
   const handleSelectMassing = (massing: any) => {
     setState(prev => ({
       ...prev,
@@ -280,6 +334,30 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
 
   const backToTamhil = () => {
     setState(prev => ({ ...prev, stage: 'tamhil_result', massing: null }));
+  };
+
+  const handleStartVisualization = () => {
+    setState(prev => ({ ...prev, stage: 'visualization_step' }));
+    if (onStepChange) {
+      onStepChange(4);
+    }
+  };
+
+  const handleSelectVisualization = (styled: StyledMassing) => {
+    setState(prev => ({
+      ...prev,
+      stage: 'visualization_result',
+      massing: { ...prev.massing, visualization: styled }
+    }));
+    setStyledMassing(styled);
+    if (onStepChange) {
+      onStepChange(4);
+    }
+  };
+
+  const backToMassing = () => {
+    setState(prev => ({ ...prev, stage: 'massing_result', visualization: null }));
+    setStyledMassing(null);
   };
 
   // Processing view (Stage 1)
@@ -351,7 +429,7 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
     );
   }
 
-  // Massing Result view
+  // Massing Result view - show detail view with proceed button
   if (state.stage === 'massing_result') {
     return (
       <MassingAnalysis
@@ -359,24 +437,31 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
         tamhil={state.tamhil!}
         onSelectMassing={handleSelectMassing}
         onReset={resetAnalysis}
+        onProceedToVisualization={handleStartVisualization}
+        onBack={backToTamhil}
+        isDetailView={true}
+        selectedMassing={state.massing}
       />
     );
   }
 
-  // Massing Design view (user choosing between alternatives)
-  if (state.stage === 'tamhil_result' && state.result && state.tamhil) {
+  // Visualization Step (Stage 4)
+  if (state.stage === 'visualization_step' || state.stage === 'visualization_analyzing' || state.stage === 'visualization_generating' || state.stage === 'visualization_result') {
     return (
-      <MassingAnalysis
-        rights={state.result}
-        tamhil={state.tamhil}
-        onSelectMassing={handleSelectMassing}
+      <VisualizationStep
+        massing={state.massing}
+        onSelectVisualization={handleSelectVisualization}
+        onBack={backToMassing}
         onReset={resetAnalysis}
+        onSave={saveProject}
+        isSaving={isSaving}
+        saveMessage={saveMessage}
       />
     );
   }
 
-  // Tamhil Result view
-  if (state.stage === 'tamhil_result' && state.tamhil) {
+  // Tamhil Result view - MUST come before Massing check to show building first
+  if (state.stage === 'tamhil_result' && state.tamhil && !state.massing) {
     return (
       <TamhilView 
         tamhil={state.tamhil} 
@@ -386,6 +471,19 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
         onSave={saveProject}
         isSaving={isSaving}
         saveMessage={saveMessage}
+        onGenerateMassing={handleGenerateMassing}
+      />
+    );
+  }
+
+  // Massing Design view (user choosing between alternatives)
+  if (state.stage === 'tamhil_result' && state.result && state.tamhil && state.massing) {
+    return (
+      <MassingAnalysis
+        rights={state.result}
+        tamhil={state.tamhil}
+        onSelectMassing={handleSelectMassing}
+        onReset={resetAnalysis}
       />
     );
   }
@@ -720,7 +818,8 @@ const TamhilView: React.FC<{
   onSave: () => void;
   isSaving: boolean;
   saveMessage: string | null;
-}> = ({ tamhil, rights, onBack, onReset, onSave, isSaving, saveMessage }) => {
+  onGenerateMassing?: () => void;
+}> = ({ tamhil, rights, onBack, onReset, onSave, isSaving, saveMessage, onGenerateMassing }) => {
   const [viewMode, setViewMode] = useState<'building' | 'summary' | 'floors' | 'json'>('building');
 
   return (
@@ -1292,6 +1391,22 @@ const TamhilView: React.FC<{
           </div>
         </div>
       )}
+
+      {/* Proceed to Massing Button */}
+      <div className="flex gap-4">
+        <button
+          onClick={onGenerateMassing}
+          className="flex-1 px-12 py-4 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-400 hover:to-amber-500 transition-all text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20"
+        >
+          Proceed to Stage 3: Massing Design
+        </button>
+        <button
+          onClick={onBack}
+          className="px-6 py-4 rounded-full border border-white/20 text-white/60 hover:bg-white/5 transition-colors text-sm"
+        >
+          Back to Rights
+        </button>
+      </div>
     </div>
   );
 };
