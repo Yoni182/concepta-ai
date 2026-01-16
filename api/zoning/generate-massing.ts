@@ -131,7 +131,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!GEMINI_API_KEY) {
-    console.error('GEMINI_API_KEY not set');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
@@ -144,8 +143,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!planningRights || !tamhil) {
       return res.status(400).json({ error: 'Missing planning rights or tamhil data' });
     }
-
-    console.log('[Massing] Generating alternatives...');
 
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
@@ -163,7 +160,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const responseText = response.text || '';
-    console.log('[Massing] Response received');
 
     // Extract and parse JSON
     let alternatives: MassingAlternative[];
@@ -172,10 +168,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const jsonStr = jsonMatch ? jsonMatch[1] : responseText;
       alternatives = JSON.parse(jsonStr);
     } catch (parseError) {
-      console.error('[Massing] Parse error:', responseText.substring(0, 300));
       return res.status(500).json({
         error: 'Failed to parse massing alternatives',
-        raw: responseText.substring(0, 500),
       });
     }
 
@@ -183,14 +177,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('Invalid alternatives format');
     }
 
-    console.log(`[Massing] Generated ${alternatives.length} alternatives`);
-
     return res.status(200).json({
       massingAlternatives: alternatives,
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('[Massing] Error:', error.message);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Massing generation failed' });
   }
 }

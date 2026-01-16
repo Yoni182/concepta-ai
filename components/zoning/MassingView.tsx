@@ -38,19 +38,13 @@ const MassingView: React.FC<MassingViewProps> = ({ alternative, isSelected, onSe
   useEffect(() => {
     const container = containerRef.current;
     if (!container) {
-      console.error('❌ No container ref');
       return;
     }
-
-    console.log('✓ Container found');
 
     const width = container.clientWidth;
     const height = container.clientHeight;
     
-    console.log('✓ Dimensions:', width, 'x', height);
-
     if (width === 0 || height === 0) {
-      console.error('❌ Container has no size');
       return;
     }
 
@@ -58,20 +52,17 @@ const MassingView: React.FC<MassingViewProps> = ({ alternative, isSelected, onSe
       // Scene setup
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x111111);
-      console.log('✓ Scene created');
 
       // Camera
       const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
       camera.position.set(50, 40, 60);
       camera.lookAt(0, 0, 0);
-      console.log('✓ Camera created');
 
       // Renderer
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(width, height);
       renderer.setPixelRatio(window.devicePixelRatio);
       container.appendChild(renderer.domElement);
-      console.log('✓ Renderer created and added to DOM');
 
       // Lighting
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -80,7 +71,6 @@ const MassingView: React.FC<MassingViewProps> = ({ alternative, isSelected, onSe
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
       directionalLight.position.set(50, 50, 50);
       scene.add(directionalLight);
-      console.log('✓ Lighting added');
 
       // Ground plane
       const groundGeometry = new THREE.PlaneGeometry(200, 200);
@@ -94,10 +84,8 @@ const MassingView: React.FC<MassingViewProps> = ({ alternative, isSelected, onSe
       const gridHelper = new THREE.GridHelper(200, 20, 0x444444, 0x333333);
       gridHelper.position.y = 0;
       scene.add(gridHelper);
-      console.log('✓ Ground and grid added');
 
       // Build towers
-      console.log('Building towers:', alternative.towers.length);
       alternative.towers.forEach((tower, idx) => {
         const colors = [0xf59e0b, 0xd97706, 0xb45309];
         const color = colors[idx % colors.length];
@@ -132,7 +120,6 @@ const MassingView: React.FC<MassingViewProps> = ({ alternative, isSelected, onSe
           scene.add(floorMesh);
         }
       });
-      console.log('✓ Towers added to scene');
 
       // Mouse controls
       let isDragging = false;
@@ -188,7 +175,6 @@ const MassingView: React.FC<MassingViewProps> = ({ alternative, isSelected, onSe
         renderer.render(scene, camera);
       };
       animate();
-      console.log('✓ Animation loop started');
 
       // Handle resize
       const handleResize = () => {
@@ -215,7 +201,7 @@ const MassingView: React.FC<MassingViewProps> = ({ alternative, isSelected, onSe
         renderer.dispose();
       };
     } catch (error) {
-      console.error('❌ Three.js Error:', error);
+      // Silent error handling - don't expose details
     }
   }, [alternative]);
 
