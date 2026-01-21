@@ -126,13 +126,22 @@ const VisualizationViewer: React.FC<VisualizationViewerProps> = ({ styledMassing
         }
       });
 
-      // Mouse controls
+      // Mouse controls with proper spherical coordinate handling
       let isDragging = false;
       let previousMousePosition = { x: 0, y: 0 };
+      let sphericalCoords = {
+        radius: camera.position.length(),
+        theta: Math.atan2(camera.position.z, camera.position.x),
+        phi: Math.acos(Math.max(-1, Math.min(1, camera.position.y / camera.position.length())))
+      };
 
       renderer.domElement.addEventListener('mousedown', (e) => {
         isDragging = true;
         previousMousePosition = { x: e.clientX, y: e.clientY };
+        // Update spherical coordinates when starting drag
+        sphericalCoords.radius = camera.position.length();
+        sphericalCoords.theta = Math.atan2(camera.position.z, camera.position.x);
+        sphericalCoords.phi = Math.acos(Math.max(-1, Math.min(1, camera.position.y / sphericalCoords.radius)));
       });
 
       renderer.domElement.addEventListener('mousemove', (e) => {
@@ -141,18 +150,17 @@ const VisualizationViewer: React.FC<VisualizationViewerProps> = ({ styledMassing
         const deltaX = e.clientX - previousMousePosition.x;
         const deltaY = e.clientY - previousMousePosition.y;
 
-        const radius = 120;
-        let theta = Math.atan2(camera.position.z, camera.position.x);
-        let phi = Math.acos(camera.position.y / radius);
+        // Adjust angles based on mouse movement, preserving the actual radius
+        sphericalCoords.theta -= (deltaX * Math.PI) / 500;
+        sphericalCoords.phi += (deltaY * Math.PI) / 500;
 
-        theta -= (deltaX * Math.PI) / 500;
-        phi += (deltaY * Math.PI) / 500;
+        // Clamp phi to prevent flipping through the top/bottom
+        sphericalCoords.phi = Math.max(0.1, Math.min(Math.PI - 0.1, sphericalCoords.phi));
 
-        phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
-
-        camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
-        camera.position.y = radius * Math.cos(phi);
-        camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
+        // Convert back to Cartesian coordinates using the stored radius
+        camera.position.x = sphericalCoords.radius * Math.sin(sphericalCoords.phi) * Math.cos(sphericalCoords.theta);
+        camera.position.y = sphericalCoords.radius * Math.cos(sphericalCoords.phi);
+        camera.position.z = sphericalCoords.radius * Math.sin(sphericalCoords.phi) * Math.sin(sphericalCoords.theta);
         camera.lookAt(0, 0, 0);
 
         previousMousePosition = { x: e.clientX, y: e.clientY };
@@ -168,8 +176,10 @@ const VisualizationViewer: React.FC<VisualizationViewerProps> = ({ styledMassing
           e.preventDefault();
           const direction = camera.position.clone().normalize();
           const distance = camera.position.length();
+          // Keep camera distance between 40 and 250 for visualization
           const newDistance = Math.max(40, Math.min(250, distance + e.deltaY * 0.1));
           camera.position.copy(direction.multiplyScalar(newDistance));
+          camera.lookAt(0, 0, 0);
         },
         { passive: false }
       );
@@ -308,32 +318,6 @@ const VisualizationViewer: React.FC<VisualizationViewerProps> = ({ styledMassing
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Design Application Description */}
-      <div className="bg-gradient-to-r from-amber-500/5 via-transparent to-amber-500/5 border border-amber-500/20 rounded-2xl p-6 space-y-3">
-        <h3 className="text-[10px] mono uppercase tracking-widest text-amber-400">Design Application Strategy</h3>
-        <p className="text-white/70 text-sm leading-relaxed">{styledMassing.design_description}</p>
-      </div>
-
-      {/* Key Characteristics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-2">
-          <p className="text-[10px] text-white/40 uppercase tracking-wider">Proportional Logic</p>
-          <p className="text-xs font-medium text-white/70">{styledMassing.design_dna.proportional_logic}</p>
-        </div>
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-2">
-          <p className="text-[10px] text-white/40 uppercase tracking-wider">Vertical Rhythm</p>
-          <p className="text-xs font-medium text-white/70">{styledMassing.design_dna.vertical_rhythm}</p>
-        </div>
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-2">
-          <p className="text-[10px] text-white/40 uppercase tracking-wider">Horizontal Banding</p>
-          <p className="text-xs font-medium text-white/70">{styledMassing.design_dna.horizontal_banding}</p>
-        </div>
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-2">
-          <p className="text-[10px] text-white/40 uppercase tracking-wider">Surface Articulation</p>
-          <p className="text-xs font-medium text-white/70">{styledMassing.design_dna.surface_articulation}</p>
         </div>
       </div>
     </div>

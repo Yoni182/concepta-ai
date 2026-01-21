@@ -7,7 +7,6 @@ interface VisualizationStepProps {
   massing: MassingAlternative;
   onSelectVisualization: (styled: StyledMassing) => void;
   onBack: () => void;
-  onReset: () => void;
   onSave: (currentStep: number, visualization: StyledMassing) => void;
   isSaving: boolean;
   saveMessage: string | null;
@@ -17,7 +16,6 @@ const VisualizationStep: React.FC<VisualizationStepProps> = ({
   massing,
   onSelectVisualization,
   onBack,
-  onReset,
   onSave,
   isSaving,
   saveMessage
@@ -93,48 +91,13 @@ const VisualizationStep: React.FC<VisualizationStepProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 px-4 md:px-0">
+    <div className="max-w-7xl mx-auto space-y-8 px-4 md:px-0 pb-24">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="text-center md:text-left">
-          <h1 className="text-xl md:text-3xl font-light uppercase tracking-tighter">Stage 4: 3D Visualization</h1>
-          <p className="text-white/40 text-xs md:text-sm mt-1">
-            Design your massing according to a reference architectural style
-          </p>
-        </div>
-        <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-center md:justify-end">
-          {styledMassing && (
-            <button
-              onClick={() => onSave(4, styledMassing)}
-              disabled={isSaving}
-              className="px-4 py-2 rounded-full border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 transition-colors text-xs md:text-sm flex items-center gap-2"
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-amber-400/50 border-t-amber-400 rounded-full animate-spin"></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                  Save
-                </>
-              )}
-            </button>
-          )}
-          <button
-            onClick={onBack}
-            className="px-4 md:px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-xs md:text-sm"
-          >
-            Back to Massing
-          </button>
-          <button
-            onClick={onReset}
-            className="px-4 md:px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-xs md:text-sm"
-          >
-            Start Over
-          </button>
-        </div>
+      <div className="text-center md:text-left mb-8">
+        <h1 className="text-xl md:text-3xl font-light uppercase tracking-tighter">Stage 4: 3D Visualization</h1>
+        <p className="text-white/40 text-xs md:text-sm mt-1">
+          Design your massing according to a reference architectural style
+        </p>
       </div>
 
       {/* Messages */}
@@ -200,18 +163,25 @@ const VisualizationStep: React.FC<VisualizationStepProps> = ({
       )}
 
       {step === 'result' && styledMassing && (
-        <VisualizationViewer styledMassing={styledMassing} />
-      )}
-
-      {step === 'result' && styledMassing && (
-        <button
-          onClick={() => {
-            onSelectVisualization(styledMassing);
-          }}
-          className="w-full px-12 py-4 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-400 hover:to-amber-500 transition-all text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20"
-        >
-          Approve Visualization & Proceed to Step 5
-        </button>
+        <>
+          <VisualizationViewer styledMassing={styledMassing} />
+          
+          {/* Proceed to Export Button */}
+          <div className="flex gap-4">
+            <button
+              onClick={() => onSelectVisualization(styledMassing)}
+              className="flex-1 px-12 py-4 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold hover:from-amber-400 hover:to-amber-500 transition-all text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20"
+            >
+              Proceed to Stage 5: Export & Report
+            </button>
+            <button
+              onClick={onBack}
+              className="px-6 py-4 rounded-full border border-white/20 text-white/60 hover:bg-white/5 transition-colors text-sm"
+            >
+              Back to Massing
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

@@ -58,11 +58,14 @@ const App: React.FC = () => {
       {/* Sidebar with 5 steps */}
       <aside className="w-72 border-r border-white/10 p-8 flex flex-col justify-between hidden md:flex shrink-0 bg-[#0a0a0a]">
         <div>
-          {/* Logo */}
-          <div className="mb-10 text-center">
+          {/* Logo - Clickable to reset to Step 1 */}
+          <button
+            onClick={() => setCurrentStep(1)}
+            className="w-full mb-10 text-center hover:opacity-80 transition-opacity"
+          >
             <h1 className="text-2xl font-bold tracking-tighter mb-1 uppercase">CONCEPTA</h1>
             <p className="text-[10px] mono text-white/40 uppercase tracking-[0.2em]">AI Architecture Engine</p>
-            </div>
+          </button>
 
           {/* 5 Steps */}
           <div className="space-y-2">
@@ -124,7 +127,7 @@ const App: React.FC = () => {
             ref={zoningRef}
             onStepChange={setCurrentStep} 
             currentStep={currentStep} 
-          />
+            />
         </main>
       </div>
 

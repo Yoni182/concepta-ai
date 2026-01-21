@@ -4,6 +4,7 @@ import { useAuth } from '../../services/authContext';
 import { Project, createProject, updateProject } from '../../services/projectsService';
 import MassingAnalysis from './MassingAnalysis';
 import VisualizationStep from './VisualizationStep';
+import ExportReport from './ExportReport';
 
 interface ZoningAnalysisProps {
   onStepChange?: (step: number) => void;
@@ -105,6 +106,8 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
         onStepChange(4); // Step 4 for visualization
       } else if (state.stage === 'visualization_result') {
         onStepChange(4); // Step 4 result
+      } else if (state.stage === 'export_report') {
+        onStepChange(5); // Step 5 - Export
       }
     }
   }, [state.stage, onStepChange]);
@@ -360,6 +363,18 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
     setStyledMassing(null);
   };
 
+  const handleProceedToExport = (styled: StyledMassing) => {
+    setStyledMassing(styled);
+    setState(prev => ({
+      ...prev,
+      stage: 'export_report',
+      massing: { ...prev.massing, visualization: styled }
+    }));
+    if (onStepChange) {
+      onStepChange(5);
+    }
+  };
+
   // Processing view (Stage 1)
   if (state.stage === 'processing') {
     return (
@@ -450,7 +465,7 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
     return (
       <VisualizationStep
         massing={state.massing}
-        onSelectVisualization={handleSelectVisualization}
+        onSelectVisualization={handleProceedToExport}
         onBack={backToMassing}
         onReset={resetAnalysis}
         onSave={saveProject}
@@ -499,6 +514,19 @@ const ZoningAnalysis = forwardRef<ZoningAnalysisRef, ZoningAnalysisProps>(({ onS
         onSave={saveProject}
         isSaving={isSaving}
         saveMessage={saveMessage}
+      />
+    );
+  }
+
+  // Export & Report view (Stage 5)
+  if (state.stage === 'export_report' && state.result && state.tamhil && state.massing && styledMassing) {
+    return (
+      <ExportReport
+        rights={state.result}
+        tamhil={state.tamhil}
+        massing={state.massing}
+        styledMassing={styledMassing}
+        onBack={() => setState(prev => ({ ...prev, stage: 'visualization_result' }))}
       />
     );
   }
@@ -638,45 +666,13 @@ const RightsResultView: React.FC<{
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0">
+    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0 pb-24">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="text-center md:text-left">
-          <h1 className="text-xl md:text-3xl font-light uppercase tracking-tighter">Stage 1: Rights Extracted</h1>
-          <p className="text-white/40 text-xs md:text-sm mt-1">
-            Gush {result.parcel.gush} | Helka {result.parcel.helka}
-          </p>
-        </div>
-        <div className="flex items-center justify-center gap-2 md:gap-4">
-          <button
-            onClick={() => setShowJson(!showJson)}
-            className="px-3 md:px-4 py-2 text-[10px] md:text-xs mono uppercase border border-white/20 rounded-lg hover:bg-white/5 transition-colors"
-          >
-            {showJson ? 'Cards' : 'JSON'}
-          </button>
-          <button
-            onClick={onSave}
-            disabled={isSaving}
-            className="px-4 md:px-6 py-2 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 hover:bg-amber-500/30 disabled:opacity-50 transition-colors text-xs md:text-sm flex items-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <div className="w-3 h-3 border-2 border-amber-400/20 border-t-amber-400 rounded-full animate-spin"></div>
-                Saving...
-              </>
-            ) : saveMessage ? (
-              <>✓ {saveMessage}</>
-            ) : (
-              '💾 Save'
-            )}
-          </button>
-          <button
-            onClick={onReset}
-            className="px-4 md:px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-xs md:text-sm"
-          >
-            Start Over
-          </button>
-        </div>
+      <div>
+        <h1 className="text-xl md:text-3xl font-light uppercase tracking-tighter">Stage 1: Rights Extracted</h1>
+        <p className="text-white/40 text-xs md:text-sm mt-1">
+          Gush {result.parcel.gush} | Helka {result.parcel.helka}
+        </p>
       </div>
 
       {/* Confidence badge */}
@@ -823,65 +819,13 @@ const TamhilView: React.FC<{
   const [viewMode, setViewMode] = useState<'building' | 'summary' | 'floors' | 'json'>('building');
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0">
+    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0 pb-24">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="text-center md:text-left">
-          <h1 className="text-xl md:text-3xl font-light uppercase tracking-tighter">Tamhil Generated</h1>
-          <p className="text-white/40 text-xs md:text-sm mt-1">
-            Gush {tamhil.project_info.gush} | Helka {tamhil.project_info.helka}
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-4">
-          <div className="flex flex-wrap justify-center bg-white/5 border border-white/10 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('building')}
-              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'building' ? 'bg-amber-500 text-white' : 'text-white/50 hover:text-white'}`}
-            >
-              🏢 Building
-            </button>
-            <button
-              onClick={() => setViewMode('summary')}
-              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'summary' ? 'bg-amber-500 text-white' : 'text-white/50 hover:text-white'}`}
-            >
-              Summary
-            </button>
-            <button
-              onClick={() => setViewMode('floors')}
-              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'floors' ? 'bg-amber-500 text-white' : 'text-white/50 hover:text-white'}`}
-            >
-              Floors
-            </button>
-            <button
-              onClick={() => setViewMode('json')}
-              className={`px-2 md:px-3 py-1 text-[10px] md:text-xs mono uppercase rounded transition-colors ${viewMode === 'json' ? 'bg-amber-500 text-white' : 'text-white/50 hover:text-white'}`}
-            >
-              JSON
-            </button>
-          </div>
-          <button
-            onClick={onSave}
-            disabled={isSaving}
-            className="px-4 md:px-6 py-2 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-400 hover:bg-amber-500/30 disabled:opacity-50 transition-colors text-xs md:text-sm flex items-center gap-2"
-          >
-            {isSaving ? (
-              <>
-                <div className="w-3 h-3 border-2 border-amber-400/20 border-t-amber-400 rounded-full animate-spin"></div>
-                Saving...
-              </>
-            ) : saveMessage ? (
-              <>✓ {saveMessage}</>
-            ) : (
-              '💾 Save'
-            )}
-          </button>
-          <button
-            onClick={onReset}
-            className="px-4 md:px-6 py-2 rounded-full border border-white/20 hover:bg-white/5 transition-colors text-xs md:text-sm"
-          >
-            Start Over
-          </button>
-        </div>
+      <div>
+        <h1 className="text-xl md:text-3xl font-light uppercase tracking-tighter">Tamhil Generated</h1>
+        <p className="text-white/40 text-xs md:text-sm mt-1">
+          Gush {tamhil.project_info.gush} | Helka {tamhil.project_info.helka}
+        </p>
       </div>
 
       {/* Building Summary Stats */}

@@ -234,7 +234,7 @@ export interface TamhilOutput {
 }
 
 export interface ZoningAnalysisState {
-  stage: 'input' | 'processing' | 'rights_result' | 'generating_tamhil' | 'tamhil_result' | 'generating_massing' | 'massing_result' | 'visualization_step' | 'visualization_analyzing' | 'visualization_generating' | 'visualization_result';
+  stage: 'input' | 'processing' | 'rights_result' | 'generating_tamhil' | 'tamhil_result' | 'generating_massing' | 'massing_result' | 'visualization_step' | 'visualization_analyzing' | 'visualization_generating' | 'visualization_result' | 'export_report';
   gush: string;
   helka: string;
   documents: ZoningDocument[];
