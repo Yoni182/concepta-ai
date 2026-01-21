@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
-import { DesignDNA, MassingAlternative, StyledMassing } from '../../types';
+import { DesignDNA, StyledMassing } from '../../types';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
